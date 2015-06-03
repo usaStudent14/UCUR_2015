@@ -1,3 +1,5 @@
+// Authors: Ed Baker, Alex Henderson, Jake Maynard
+
 #include <NXShield.h>
 #include <Wire.h>
 #include <NXTLight.h>
