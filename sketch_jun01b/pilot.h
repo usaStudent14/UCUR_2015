@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <NXShield.h>
 #include <NXTLight.h>
+#include <RFIDuino.h>
 
 // #define TURN_ROTATION 167.45
 #define TURN_ROTATION 175
@@ -16,21 +17,22 @@ class PILOT {
 private:
 	
 public:
-	PILOT(NXShield& nxt, NXTLight& light1, NXTLight& light2);
+	PILOT(NXShield& nxt, NXTLight& light1, NXTLight& light2, RFIDuino& rfid);
 	~PILOT();
 	int error;
 	int correction;
 	int motorSpeed_1;
 	int motorSpeed_2;
+        byte tagData[5];
 	NXShield * pNxShield;
 	NXTLight * pNxLight_1;
 	NXTLight * pNxLight_2;
+        RFIDuino * prfid;
 	void stop();
 	void turnLeft();
 	void turnRight();
 	void uTurn();
-	void straight();
-	void testMe();
+	void straight(byte (&tagData)[5]);
 	void resetMotors();
 };
 
