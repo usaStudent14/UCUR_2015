@@ -23,7 +23,7 @@ struct coords{
   int y = 0;
 };
 
-coords rob_track[2]; // Initialize to number of robots in system
+coords remote_pos[2]; // Initialize to number of robots in system
 
 // used for xbee receive
 String inputString = "";
@@ -36,13 +36,15 @@ int motorSpeed_1;
 int motorSpeed_2;
 int correction;
 int error;
-int heading;
+int heading = 0;
 byte tagData[5];                  //Holds the ID numbers from the tag
-byte tagDataBuffer[5];            //A Buffer for verifying the tag data
 Tag tagRef[5][5];
 
 void mapInit();
 void get_pos();
+int pickMove();
+void assignPriority(int (&directions)[4]);
+void move(int targ_heading);
 void serialEvent();
 
 void setup() {
@@ -78,19 +80,19 @@ void loop() {
   Serial.print(" ");
   Serial.println(y_coord);
   
-  //Recieve other robots' info
-  rob_track[input
+  //Recieve remote robot position
+  int remoteID = inputString.substring(0, 1).toInt();
+  remote_pos[remoteID].x = inputString.substring(2, 3).toInt();
+  remote_pos[remoteID].y = inputString.substring(4).toInt();
   
-  //Check for locations visited
-
   //Pick move
-
-  //Broadcast intended location
-
+  int targ_heading = pickMove();
+  
   //Move
+  move(targ_heading);
 
   //ID new location
- 
+  get_pos();
 }
 
 // initialize the map with tag IDs
@@ -123,7 +125,10 @@ void mapInit()
   tagRef[4][4].setTagData(112, 0, 39, 20, 118);
 }
 
-
+/*
+ Identifies the grid position
+ corresponding to current tag data
+ */
 void get_pos() {
   bool tagComp = false;
   for (int x = 0; x < 5; x++)
@@ -139,6 +144,90 @@ void get_pos() {
       }
     }
   }// end loop
+  
+}
+
+
+int pickMove(){
+  int directions[4]; //indeces correspond to headings.
+  
+  assignPriority(directions);
+  int targ_heading = 0;
+  
+  // find heading with highest priority
+  for(int i = 1; i < 4; i++){
+    if(directions[i] > directions[targ_heading])
+       targ_heading = i; 
+  }
+  return targ_heading; 
+}
+
+/*
+  Uses a numbering priority scheme to select the best
+  position to travel to next, or will timeout if no
+  match found. Each adjacent position will be assigned 
+  the appropriate priority: 0 if occupied or soon to be
+  occupied, 1 if unoccupied and already visited, 2 if 
+  unoccupied and unvisited.
+*/
+void assignPriority(int (&directions)[4]){
+  
+  //Assign priorites
+  for(int i = 0; i < 4; i++){
+    int x = x_coord + (i%2)*(2-i);
+    int y = y_coord + ((i+1)%2)*(2-i);
+    
+    // if off the board
+    if(x<0 || x>4 || y<0 || y>4){
+      directions[i] = 0;
+      continue;
+    }
+    
+    // if occupied
+    for(int r = 0; r < sizeof(remote_pos)/sizeof(coords); r++){
+      if(remote_pos[r].x == x && remote_pos[r].y == y)
+        directions[i] = 0;
+        continue;
+    }
+    
+    // if already visited
+    if(tagRef[x][y].isVisited()){
+      directions[i] = 1;
+      continue; 
+    }
+      
+    // if unnoccupied and unvisited
+    directions[i] = 2;
+      
+  }// end loop
+}
+
+/*
+  Takes in a target heading, turns the robot the
+  appropriate amount, and moves straight alongh the
+  grid till a new RFID is read. Sets tagData as a 
+  side effect.
+*/
+void move(int targ_heading){
+  int turn;
+  // Calculate turn increment
+  if(targ_heading == 0 && heading == 3)
+    turn = -1;
+  else if(targ_heading == 3 && heading == 0)
+    turn == 1;
+  else
+    turn = targ_heading - heading; //negative is right turn, positive is left
+  
+  // Turn appropriate direction
+  for(int i = 0; i < turn; i++){
+    if(turn > 0)
+      pilot.turnLeft();
+    else
+      pilot.turnRight(); 
+  }
+  
+  // Travel straight to next position
+  pilot.straight(tagData);
   
 }
 
