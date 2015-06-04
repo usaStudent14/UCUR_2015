@@ -85,13 +85,14 @@ void PILOT::resetMotors()
 	pNxShield->bank_a.motorReset();
 }
 
-void PILOT::straight(byte (&tagData)[5])
+void PILOT::straight(byte (&tagData)[5], byte tagDataBuffer[5])
 {
 	//int combined = pNxLight_1->readRaw() + pNxLight_2->readRaw();
-	while(!(prfid->decodeTag(tagData)))	{
-		// Serial.println("straight part one");
+    while( prfid->compareTagData(tagData,tagDataBuffer)){
+	while(!(prfid->decodeTag(tagData)))
+        {
 		error = pNxLight_1->readRaw() - pNxLight_2->readRaw();
-		// correction = min( abs(error), 5 );
+		/*
 		correction = 5;
 		if ( error < -10 ){
 			motorSpeed_1 = SPEED + correction;
@@ -104,10 +105,16 @@ void PILOT::straight(byte (&tagData)[5])
 			motorSpeed_1 = SPEED;
 			motorSpeed_2 = SPEED;
 		}
+                */
+                
+               motorSpeed_1 = SPEED - (error / 15);
+               motorSpeed_2 = SPEED + (error / 15);
+                
 		pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Forward, motorSpeed_1);
 		pNxShield->bank_a.motorRunUnlimited(SH_Motor_2, SH_Direction_Forward, motorSpeed_2);
 		//combined = pNxLight_1->readRaw() + pNxLight_2->readRaw();
 	}
+    }
 
 	pNxShield->bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
 

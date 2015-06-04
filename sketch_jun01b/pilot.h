@@ -10,7 +10,7 @@
 // #define TURN_ROTATION 167.45
 #define TURN_ROTATION 175
 #define U_TURN_ROTATION 334.9
-#define SPEED 15 // was 20
+#define SPEED 15
 #define DISTANCE 200
 // Pilot class provides directional, speed and steering control
 class PILOT {
@@ -32,7 +32,7 @@ public:
 	void turnLeft();
 	void turnRight();
 	void uTurn();
-	void straight(byte (&tagData)[5]);
+	void straight(byte (&tagData)[5], byte tagDataBuffer[5]);
 	void resetMotors();
 };
 

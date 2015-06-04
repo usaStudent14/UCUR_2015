@@ -15,7 +15,6 @@ RFIDuino rfid;
 
 PILOT pilot(nxshield, light1, light2, rfid);
 
-#define SPEED 15
 #define ID 1  //Unique id for each robot
 
 struct coords{
@@ -36,8 +35,9 @@ int motorSpeed_1;
 int motorSpeed_2;
 int correction;
 int error;
-int heading = 0;
+int heading = 1;
 byte tagData[5];                  //Holds the ID numbers from the tag
+byte tagDataBuffer[5];
 Tag tagRef[5][5];
 
 void mapInit();
@@ -65,7 +65,11 @@ void setup() {
   delay(500);
 
   //ID initial location
-  rfid.decodeTag(tagData);
+  bool initRead = true;
+  while(initRead){
+    initRead = !rfid.decodeTag(tagData);
+  }
+  memcpy(tagDataBuffer, tagData, 5);
   get_pos();  
 
   nxshield.ledSetRGB(5, 0, 0);
@@ -74,6 +78,7 @@ void setup() {
 void loop() {
 
   //Broadcast location
+  Serial.print("rob_");
   Serial.print(ID);
   Serial.print(" ");
   Serial.print(x_coord);
@@ -81,16 +86,24 @@ void loop() {
   Serial.println(y_coord);
   
   //Recieve remote robot position
-  int remoteID = inputString.substring(0, 1).toInt();
-  remote_pos[remoteID].x = inputString.substring(2, 3).toInt();
-  remote_pos[remoteID].y = inputString.substring(4).toInt();
+  if(inputString.startsWith("rob_")){
+    int remoteID = inputString.substring(4, 5).toInt();
+    if(remoteID != ID){
+      remote_pos[remoteID].x = inputString.substring(6, 7).toInt();
+      remote_pos[remoteID].y = inputString.substring(8).toInt();
+    }
+  }
   
   //Pick move
   int targ_heading = pickMove();
   
   //Move
   move(targ_heading);
-
+  memcpy(tagDataBuffer, tagData, 5);
+  
+  // update heading
+  heading = targ_heading;
+  
   //ID new location
   get_pos();
 }
@@ -140,7 +153,9 @@ void get_pos() {
       if (tagComp)
       {
         x_coord = x;
-        x_coord = y;
+        y_coord = y;
+        tagRef[x][y].visit();
+        return;
       }
     }
   }// end loop
@@ -175,7 +190,7 @@ void assignPriority(int (&directions)[4]){
   //Assign priorites
   for(int i = 0; i < 4; i++){
     int x = x_coord + (i%2)*(2-i);
-    int y = y_coord + ((i+1)%2)*(2-i);
+    int y = y_coord + ((i+1)%2)*((i+1)-2);
     
     // if off the board
     if(x<0 || x>4 || y<0 || y>4){
@@ -216,18 +231,22 @@ void move(int targ_heading){
   else if(targ_heading == 3 && heading == 0)
     turn == 1;
   else
-    turn = targ_heading - heading; //negative is right turn, positive is left
+    turn = targ_heading - heading; //negative is left turn, positive is right
   
   // Turn appropriate direction
-  for(int i = 0; i < turn; i++){
-    if(turn > 0)
+  for(int i = 0; i < abs(turn); i++){
+    if(turn < 0){
+      Serial.println("turning left");
       pilot.turnLeft();
-    else
+    }
+    else if (turn > 0){
+      Serial.println("turning right");
       pilot.turnRight(); 
+    }
   }
   
   // Travel straight to next position
-  pilot.straight(tagData);
+  pilot.straight(tagData, tagDataBuffer);
   
 }
 
