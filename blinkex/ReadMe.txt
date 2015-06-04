@@ -1,0 +1,1 @@
+This is the ino file that runs on the board so that c++ program will communicate with it. -jake
