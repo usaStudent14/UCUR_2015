@@ -7,8 +7,7 @@
 #include <NXTLight.h>
 #include <RFIDuino.h>
 
-// #define TURN_ROTATION 167.45
-#define TURN_ROTATION 175
+#define TURN_ROTATION 350
 #define U_TURN_ROTATION 334.9
 #define SPEED 15
 #define DISTANCE 200

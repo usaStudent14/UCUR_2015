@@ -15,7 +15,7 @@ RFIDuino rfid;
 
 PILOT pilot(nxshield, light1, light2, rfid);
 
-#define ID 1  //Unique id for each robot
+#define ID 0  //Unique id for each robot
 
 struct coords{
   int x = 0;
@@ -31,16 +31,13 @@ boolean stringComplete = false;
 int x_coord;
 int y_coord;
 
-int motorSpeed_1;
-int motorSpeed_2;
-int correction;
-int error;
 int heading = 1;
 byte tagData[5];                  //Holds the ID numbers from the tag
 byte tagDataBuffer[5];
 Tag tagRef[5][5];
 
 void mapInit();
+void parseInput();
 void get_pos();
 int pickMove();
 void assignPriority(int (&directions)[4]);
@@ -84,18 +81,13 @@ void loop() {
   Serial.print(x_coord);
   Serial.print(" ");
   Serial.println(y_coord);
-  
-  //Recieve remote robot position
-  if(inputString.startsWith("rob_")){
-    int remoteID = inputString.substring(4, 5).toInt();
-    if(remoteID != ID){
-      remote_pos[remoteID].x = inputString.substring(6, 7).toInt();
-      remote_pos[remoteID].y = inputString.substring(8).toInt();
-    }
-  }
+    
+  serialEvent();
   
   //Pick move
   int targ_heading = pickMove();
+  
+  serialEvent();
   
   //Move
   move(targ_heading);
@@ -106,6 +98,7 @@ void loop() {
   
   //ID new location
   get_pos();
+  
 }
 
 // initialize the map with tag IDs
@@ -138,6 +131,28 @@ void mapInit()
   tagRef[4][4].setTagData(112, 0, 39, 20, 118);
 }
 
+
+void parseInput(){
+  
+   //Recieve remote robot position
+  if(inputString.startsWith("rob_")){
+    int remoteID = inputString.substring(4, 5).toInt();
+    if(remoteID != ID){
+      remote_pos[remoteID].x = inputString.substring(6, 7).toInt();
+      remote_pos[remoteID].y = inputString.substring(8, 9).toInt();
+      Serial.print("Read rob_");
+      Serial.print(remoteID);
+      Serial.print(" at ");
+      Serial.print(remote_pos[remoteID].x);
+      Serial.print(" ");
+      Serial.println(remote_pos[remoteID].y);
+      inputString = "";
+    }
+  }
+  else if(inputString.startsWith("cmd_stop"))
+      while(1){}
+}
+
 /*
  Identifies the grid position
  corresponding to current tag data
@@ -149,7 +164,6 @@ void get_pos() {
     for (int y = 0; y < 5; y++)
     {
       tagComp = rfid.compareTagData(tagData, tagRef[x][y].tagData);
-      delay(100);
       if (tagComp)
       {
         x_coord = x;
@@ -227,22 +241,18 @@ void move(int targ_heading){
   int turn;
   // Calculate turn increment
   if(targ_heading == 0 && heading == 3)
-    turn = -1;
+    turn = 1;
   else if(targ_heading == 3 && heading == 0)
-    turn == 1;
+    turn = -1;
   else
     turn = targ_heading - heading; //negative is left turn, positive is right
   
   // Turn appropriate direction
   for(int i = 0; i < abs(turn); i++){
-    if(turn < 0){
-      Serial.println("turning left");
+    if(turn < 0)
       pilot.turnLeft();
-    }
-    else if (turn > 0){
-      Serial.println("turning right");
+    else if (turn > 0)
       pilot.turnRight(); 
-    }
   }
   
   // Travel straight to next position
@@ -266,4 +276,7 @@ void serialEvent() {
       stringComplete = true;
     }
   }
+  
+  parseInput();
+  inputString = "";
 }
