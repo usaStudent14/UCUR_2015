@@ -15,7 +15,7 @@ RFIDuino rfid;
 
 PILOT pilot(nxshield, light1, light2, rfid);
 
-#define ID 0  //Unique id for each robot
+#define ID 1  // Unique id for each robot
 
 struct coords{
   int x = 0;
@@ -31,7 +31,7 @@ boolean stringComplete = false;
 int x_coord;
 int y_coord;
 
-int heading = 1;
+int heading = 0;
 byte tagData[5];                  //Holds the ID numbers from the tag
 byte tagDataBuffer[5];
 Tag tagRef[5][5];
@@ -64,9 +64,10 @@ void setup() {
   //ID initial location
   bool initRead = true;
   while(initRead){
-    initRead = !rfid.decodeTag(tagData);
+    initRead = !(rfid.decodeTag(tagData));
   }
-  memcpy(tagDataBuffer, tagData, 5);
+  
+  rfid.transferToBuffer(tagData, tagDataBuffer);
   get_pos();  
 
   nxshield.ledSetRGB(5, 0, 0);
@@ -91,7 +92,7 @@ void loop() {
   
   //Move
   move(targ_heading);
-  memcpy(tagDataBuffer, tagData, 5);
+  rfid.transferToBuffer(tagData, tagDataBuffer);
   
   // update heading
   heading = targ_heading;
@@ -256,7 +257,20 @@ void move(int targ_heading){
   }
   
   // Travel straight to next position
-  pilot.straight(tagData, tagDataBuffer);
+  while(rfid.compareTagData(tagData, tagDataBuffer)){
+    pilot.straight();
+    
+    rfid.decodeTag(tagData);
+    //delay(100);
+  }
+  
+  for(int i = 2; i < 5; i++){
+   Serial.print(tagData[i]);
+   Serial.print(" "); 
+  }
+  Serial.println();
+  pilot.stop();
+  rfid.successSound();
   
 }
 
