@@ -16,8 +16,7 @@ PILOT::~PILOT(){/*nothing to destruct*/}
 // stop
 void PILOT::stop(/*NXShield& nxt*/)
 {
-  pNxShield->bank_a.motorStop(SH_Motor_1, SH_Next_Action_Float);
-  pNxShield->bank_a.motorStop(SH_Motor_2, SH_Next_Action_Float);
+  pNxShield->bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
 }
 
 // Left turn
@@ -26,6 +25,7 @@ void PILOT::turnLeft()
         pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Reverse, (25));
         pNxShield->bank_a.motorRunUnlimited(SH_Motor_2, SH_Direction_Forward, (25));
         delay(850);
+   
         pNxShield->bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
 	delay(500);
 }
@@ -36,6 +36,7 @@ void PILOT::turnRight()
 	pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Forward, (25));
         pNxShield->bank_a.motorRunUnlimited(SH_Motor_2, SH_Direction_Reverse, (25));
         delay(850);
+
         pNxShield->bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
 	delay(500);
 }
@@ -67,14 +68,21 @@ void PILOT::resetMotors()
 
 void PILOT::straight()
 {       
+        byte tagData[5];
 	while(!digitalRead(9))  // Wait for pin to go low
         {               
 	       error = pNxLight_1->readRaw() - pNxLight_2->readRaw();
                motorSpeed_1 = SPEED - (error / 15);
                motorSpeed_2 = SPEED + (error / 15);
                
-	       pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Forward, motorSpeed_1);
+               if(prfid->decodeTag(tagData))
+                 return;
+               pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Forward, motorSpeed_1);
+               if(prfid->decodeTag(tagData))
+                 return;
 	       pNxShield->bank_a.motorRunUnlimited(SH_Motor_2, SH_Direction_Forward, motorSpeed_2);
+               if(prfid->decodeTag(tagData))
+                 return;
 	}
 }
 

@@ -15,7 +15,7 @@ RFIDuino rfid;
 
 PILOT pilot(nxshield, light1, light2, rfid);
 
-#define ID 1  // Unique id for each robot
+#define ID 0  // Unique id for each robot
 
 struct coords{
   int x = 0;
@@ -28,8 +28,7 @@ coords remote_pos[2]; // Initialize to number of robots in system
 String inputString = "";
 boolean stringComplete = false;
 
-int x_coord;
-int y_coord;
+coords currentPos;
 
 int heading = 0;
 byte tagData[5];                  //Holds the ID numbers from the tag
@@ -41,8 +40,11 @@ void parseInput();
 void get_pos();
 int pickMove();
 void assignPriority(int (&directions)[4]);
+coords nearestUnvisited(coords pos);
 void move(int targ_heading);
 void serialEvent();
+
+int signum(int val);
 
 void setup() {
   mapInit();
@@ -79,9 +81,9 @@ void loop() {
   Serial.print("rob_");
   Serial.print(ID);
   Serial.print(" ");
-  Serial.print(x_coord);
+  Serial.print(currentPos.x);
   Serial.print(" ");
-  Serial.println(y_coord);
+  Serial.println(currentPos.y);
     
   serialEvent();
   
@@ -167,9 +169,14 @@ void get_pos() {
       tagComp = rfid.compareTagData(tagData, tagRef[x][y].tagData);
       if (tagComp)
       {
-        x_coord = x;
-        y_coord = y;
-        tagRef[x][y].visit();
+        currentPos.x = x;
+        currentPos.y = y;
+        if(tagRef[x][y].isVisited())
+          rfid.errorSound();
+        else{
+          tagRef[x][y].visit();
+          rfid.successSound();
+        }
         return;
       }
     }
@@ -182,13 +189,36 @@ int pickMove(){
   int directions[4]; //indeces correspond to headings.
   
   assignPriority(directions);
-  int targ_heading = 0;
+  int targ_heading = -1;
   
-  // find heading with highest priority
-  for(int i = 1; i < 4; i++){
-    if(directions[i] > directions[targ_heading])
+  // look for adjacent unvisited position
+  for(int i = 0; i < 4; i++){
+    if(directions[i]==2)
        targ_heading = i; 
   }
+  
+  // if no adjacent unvisited positions found
+  if(targ_heading < 0){
+    coords dest = nearestUnvisited(currentPos);// find nearest unvisited position
+   
+    int x_dif = dest.x - currentPos.x;
+    int y_dif = dest.y - currentPos.y;
+        
+    if(abs(y_dif) > abs(x_dif)){
+        if(signum(y_dif)<0 && currentPos.y>0)
+          targ_heading = 0;
+        else if (signum(y_dif)>0 && currentPos.y<4)
+           targ_heading = 2;
+    }else if (abs(x_dif) > abs(y_dif) || abs(x_dif)==abs(y_dif)){
+      if(signum(x_dif)<0 && currentPos.x>0)
+        targ_heading = 3;
+      else if(signum(x_dif)>0 && currentPos.x<4)
+         targ_heading = 1;
+    }
+    
+  }// end if targ_heading equals -1
+  
+  Serial.println(targ_heading);
   return targ_heading; 
 }
 
@@ -204,8 +234,8 @@ void assignPriority(int (&directions)[4]){
   
   //Assign priorites
   for(int i = 0; i < 4; i++){
-    int x = x_coord + (i%2)*(2-i);
-    int y = y_coord + ((i+1)%2)*((i+1)-2);
+    int x = currentPos.x + (i%2)*(2-i);
+    int y = currentPos.y + ((i+1)%2)*((i+1)-2);
     
     // if off the board
     if(x<0 || x>4 || y<0 || y>4){
@@ -233,6 +263,42 @@ void assignPriority(int (&directions)[4]){
 }
 
 /*
+  Locates and returns the nearest unvisited tag to 
+  the robot's current position
+*/
+coords nearestUnvisited(coords pos){
+  coords dest;
+  dest.x = 500;
+  dest.y = 500;
+  
+  int minDist = 1000;
+  
+  for(int x = 0; x < 5; x++){
+   for(int y = 0; y < 5; y++){
+     if(!tagRef[x][y].isVisited()){
+        // Check if distance is smaller than current dest
+        int dist = sqrt(sq(currentPos.x - x) + sq(currentPos.y - y));
+        
+        Serial.print(x);
+        Serial.print(",");
+        Serial.print(y);
+        Serial.print(": ");
+        Serial.print(tagRef[x][y].isVisited());
+        Serial.print("  ");
+        Serial.println(dist);
+        
+        if(dist < minDist){
+           dest.x = x;
+           dest.y = y;
+           minDist = dist; 
+        }
+     }// end if not visited
+   } 
+  }// end outer loop
+  return dest;
+}
+
+/*
   Takes in a target heading, turns the robot the
   appropriate amount, and moves straight alongh the
   grid till a new RFID is read. Sets tagData as a 
@@ -256,22 +322,16 @@ void move(int targ_heading){
       pilot.turnRight(); 
   }
   
+  byte tempTagData[5];
   // Travel straight to next position
   while(rfid.compareTagData(tagData, tagDataBuffer)){
     pilot.straight();
-    
-    rfid.decodeTag(tagData);
-    //delay(100);
+   
+    if(rfid.decodeTag(tempTagData))
+      rfid.transferToBuffer(tempTagData, tagData);
+      
   }
-  
-  for(int i = 2; i < 5; i++){
-   Serial.print(tagData[i]);
-   Serial.print(" "); 
-  }
-  Serial.println();
-  pilot.stop();
-  rfid.successSound();
-  
+  nxshield.bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);  
 }
 
 /*
@@ -293,4 +353,8 @@ void serialEvent() {
   
   parseInput();
   inputString = "";
+}
+
+int signum(int val){
+ return ((0 < val) - (0 > val)); 
 }
