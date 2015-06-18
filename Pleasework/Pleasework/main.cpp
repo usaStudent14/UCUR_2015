@@ -2,33 +2,57 @@
 #include <tchar.h>
 #include "SerialClass.h"	// Library described above
 #include <string>
+#include <fstream>
+#include <iostream>
+
+using namespace std;
 
 // application reads from the specified serial port and reports the collected data
 int _tmain(int argc, _TCHAR* argv[])
 {
-	printf("Welcome to the serial test app!\n\n");
+
+	fstream fileOut1("data1.txt", ios::out);
+	fstream fileOut2("data2.txt", ios::out);
 
 	Serial* SP = new Serial("COM5");    // adjust as needed
 
 	if (SP->IsConnected())
-		printf("We're connected");
+		printf("We're connected\n");
 
-	char incomingData[256] = "";			// don't forget to pre-allocate memory
-	//printf("%s\n",incomingData);
-	int dataLength = 256;
-	int readResult = 0;
+	int count = 0;
+	char newLine[2] = "\n";
+	while(count < 20 && SP->IsConnected())
+	{	
+		string type;
+		//getline(cin, type);
+		Sleep(10);
 
-	while (SP->IsConnected())
-	{
-		readResult = SP->ReadData(incomingData, dataLength);
-		printf("Bytes read: (-1 means no data available) %i\n", readResult);
+		char data[200] = "";
 
-		std::string test(incomingData);
+		SP->ReadData(data, 20);
 
-		printf("%s", incomingData);
-		test = "";
+		string datastr = data;
+		if(datastr != "")
+			cout << datastr << endl;
 
-		Sleep(500);
+		if(datastr.find("rob1")!=string::npos){
+			//cout << datastr << endl;
+			fileOut1.write(data, datastr.length());
+			fileOut1.write(newLine, 1);
+			count ++;
 	}
+
+		if(datastr.find("rob2")!=string::npos){
+			//cout << datastr << endl;
+			fileOut2.write(data, datastr.length());
+			fileOut1.write(newLine, 1);
+			count ++;
+		}
+
+	}
+	fileOut1.close();
+	fileOut2.close();
+	getchar();
 	return 0;
 }
+
