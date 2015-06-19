@@ -79,20 +79,31 @@ void setup() {
 
 void loop() {
 
-  //Broadcast location
-  String output = "rob" + ID;
-  output += "_pos:" + currentPos.x;
-  output += "," + currentPos.y;
- 
-  Serial.println(output);
-  
-   while(!(inputString.startsWith("sys" + ID))){
-       stringComplete = false;
-       inputString = "";
-       serialEvent(); 
+    //Broadcast location
+    Serial.print("rob");
+    Serial.print(ID);
+    Serial.print("_pos:");
+    Serial.print(currentPos.x);
+    Serial.print(",");
+    Serial.println(currentPos.y);
+    serialEvent();
+        
+     while(!(inputString.startsWith("sys" + ID))){
+        //Broadcast location
+        Serial.print("rob");
+        Serial.print(ID);
+        Serial.print("_pos:");
+        Serial.print(currentPos.x);
+        Serial.print(",");
+        Serial.println(currentPos.y);
+        
+        stringComplete = false;
+        inputString = "";
+        serialEvent(); 
     }
     
   parseInput();
+  
   
   stringComplete = false;
   inputString = "";
@@ -145,6 +156,7 @@ void mapInit()
 
 void parseInput(){
   
+  inputString.trim();
   int index = inputString.indexOf("_") + 1;
   while(index < inputString.length()){
     int a = inputString.indexOf(":", index);
@@ -164,8 +176,9 @@ void parseInput(){
     remote_pos[inputString.charAt(index)-'0'][1].y = inputString.substring(a+1, b-1).toInt();
     
     index = b+1;
+    rfid.errorSound();
   }  
-      
+    
 }
 
 /*
@@ -238,6 +251,18 @@ int pickMove(){
     }
     
   }// end if targ_heading equals -1
+  
+  //Calculate and broadcast target position
+  coords targPos;
+  targPos.x = currentPos.x + (targ_heading%2)*(2-targ_heading);
+  targPos.y = currentPos.y + ((targ_heading+1)%2)*((targ_heading+1)-2);
+  
+  Serial.print("rob");
+  Serial.print(ID);
+  Serial.print("_targ:");
+  Serial.print(targPos.x);
+  Serial.print(",");
+  Serial.println(targPos.y);
   
   return targ_heading; 
 }
@@ -371,8 +396,8 @@ int signum(int val){
 }
 
 void quit(){
-   String output = "rob" + ID;
-   output+= "_done";
-   Serial.println(output);
+   Serial.print("rob");
+   Serial.print(ID);
+   Serial.println("_done");
    while(1){} 
 }
