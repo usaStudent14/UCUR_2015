@@ -15,14 +15,15 @@ RFIDuino rfid;
 
 PILOT pilot(nxshield, light1, light2, rfid);
 
-#define ID 0  // Unique id for each robot
+#define ID 2  // Unique id for each robot (cannot be 1 or 0)
 
 struct coords{
   int x = 0;
   int y = 0;
 };
 
-coords remote_pos[2]; // Initialize to number of robots in system
+coords remote_pos[4][2]; // Initialize to number of robots in system
+                        // Holds current pos at the top and target pos at the bottom
 
 // used for xbee receive
 String inputString = "";
@@ -43,6 +44,7 @@ void assignPriority(int (&directions)[4]);
 coords nearestUnvisited(coords pos);
 void move(int targ_heading);
 void serialEvent();
+void quit();
 
 int signum(int val);
 
@@ -78,20 +80,26 @@ void setup() {
 void loop() {
 
   //Broadcast location
-  Serial.print("rob_");
-  Serial.print(ID);
-  Serial.print(" ");
-  Serial.print(currentPos.x);
-  Serial.print(" ");
-  Serial.println(currentPos.y);
+  String output = "rob" + ID;
+  output += "_pos:" + currentPos.x;
+  output += "," + currentPos.y;
+ 
+  Serial.println(output);
+  
+   while(!(inputString.startsWith("sys" + ID))){
+       stringComplete = false;
+       inputString = "";
+       serialEvent(); 
+    }
     
-  serialEvent();
+  parseInput();
+  
+  stringComplete = false;
+  inputString = "";
   
   //Pick move
   int targ_heading = pickMove();
-  
-  serialEvent();
-  
+    
   //Move
   move(targ_heading);
   rfid.transferToBuffer(tagData, tagDataBuffer);
@@ -137,23 +145,27 @@ void mapInit()
 
 void parseInput(){
   
-   //Recieve remote robot position
-  if(inputString.startsWith("rob_")){
-    int remoteID = inputString.substring(4, 5).toInt();
-    if(remoteID != ID){
-      remote_pos[remoteID].x = inputString.substring(6, 7).toInt();
-      remote_pos[remoteID].y = inputString.substring(8, 9).toInt();
-      Serial.print("Read rob_");
-      Serial.print(remoteID);
-      Serial.print(" at ");
-      Serial.print(remote_pos[remoteID].x);
-      Serial.print(" ");
-      Serial.println(remote_pos[remoteID].y);
-      inputString = "";
-    }
-  }
-  else if(inputString.startsWith("cmd_stop"))
-      while(1){}
+  int index = inputString.indexOf("_") + 1;
+  while(index < inputString.length()){
+    int a = inputString.indexOf(":", index);
+    int b = inputString.indexOf(",", a);
+    remote_pos[inputString.charAt(index)-'0'][0].x = inputString.substring(a+1, b-1).toInt();
+    
+    a = b;
+    b = inputString.indexOf(":", a);
+    remote_pos[inputString.charAt(index)-'0'][0].y = inputString.substring(a+1, b-1).toInt();
+    
+    a = b;
+    b = inputString.indexOf(",", a);
+    remote_pos[inputString.charAt(index)-'0'][1].x = inputString.substring(a+1, b-1).toInt();
+    
+    a = b;
+    b = inputString.indexOf("_", a);
+    remote_pos[inputString.charAt(index)-'0'][1].y = inputString.substring(a+1, b-1).toInt();
+    
+    index = b+1;
+  }  
+      
 }
 
 /*
@@ -200,25 +212,33 @@ int pickMove(){
   // if no adjacent unvisited positions found
   if(targ_heading < 0){
     coords dest = nearestUnvisited(currentPos);// find nearest unvisited position
+    
+    if(dest.x==500)
+      quit();
    
     int x_dif = dest.x - currentPos.x;
     int y_dif = dest.y - currentPos.y;
         
     if(abs(y_dif) > abs(x_dif)){
+      if(directions[0]>0){
         if(signum(y_dif)<0 && currentPos.y>0)
           targ_heading = 0;
-        else if (signum(y_dif)>0 && currentPos.y<4)
+      }else if (directions[2]>0){
+        if(signum(y_dif)>0 && currentPos.y<4)
            targ_heading = 2;
+      }
     }else if (abs(x_dif) > abs(y_dif) || abs(x_dif)==abs(y_dif)){
-      if(signum(x_dif)<0 && currentPos.x>0)
-        targ_heading = 3;
-      else if(signum(x_dif)>0 && currentPos.x<4)
+      if(directions[3]>0){
+        if(signum(x_dif)<0 && currentPos.x>0)
+          targ_heading = 3;
+      }else if(directions[1]>0){
+        if(signum(x_dif)>0 && currentPos.x<4)
          targ_heading = 1;
+      }
     }
     
   }// end if targ_heading equals -1
   
-  Serial.println(targ_heading);
   return targ_heading; 
 }
 
@@ -245,9 +265,11 @@ void assignPriority(int (&directions)[4]){
     
     // if occupied
     for(int r = 0; r < sizeof(remote_pos)/sizeof(coords); r++){
-      if(remote_pos[r].x == x && remote_pos[r].y == y)
-        directions[i] = 0;
-        continue;
+      for(int c = 0; c < 2; c++){
+         if(remote_pos[r][c].x == x && remote_pos[r][c].y == y)
+          directions[i] = 0;
+          continue;
+      }
     }
     
     // if already visited
@@ -278,14 +300,6 @@ coords nearestUnvisited(coords pos){
      if(!tagRef[x][y].isVisited()){
         // Check if distance is smaller than current dest
         int dist = sqrt(sq(currentPos.x - x) + sq(currentPos.y - y));
-        
-        Serial.print(x);
-        Serial.print(",");
-        Serial.print(y);
-        Serial.print(": ");
-        Serial.print(tagRef[x][y].isVisited());
-        Serial.print("  ");
-        Serial.println(dist);
         
         if(dist < minDist){
            dest.x = x;
@@ -349,12 +363,16 @@ void serialEvent() {
     if (inChar == 0x0d || inChar == 0x0a) {
       stringComplete = true;
     }
-  }
-  
-  parseInput();
-  inputString = "";
+  }  
 }
 
 int signum(int val){
  return ((0 < val) - (0 > val)); 
+}
+
+void quit(){
+   String output = "rob" + ID;
+   output+= "_done";
+   Serial.println(output);
+   while(1){} 
 }
