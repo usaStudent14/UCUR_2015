@@ -18,7 +18,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	coords robPos[4][2]; //Hardcode to number of bots + 2(since we can't use 0 or 1)
 
 	// Fill coordinate array
-	for(int i = 0; i < sizeof(robPos)/sizeof(coords);i++){
+	for(int i = 0; i < sizeof(robPos)/sizeof(coords[2]);i++){
 		for(int j = 0; j < 2; j++){
 			robPos[i][j].x = 0;
 			robPos[i][j].y = 0;
@@ -35,7 +35,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	string datastr = "";
 	bool stringComplete = false;
 
-	int robCount = 1;// number of robots
+	int robCount = 2;// number of robots
 	int doneCount = 0;// number of robots that have completed the tour
 
 	while(doneCount < robCount && SP->IsConnected())
@@ -74,7 +74,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				reply[5] = 'p';
 				reply[6] = '_';
 				int rchar = 7;
-				for(int i = 2; i < sizeof(robPos)/sizeof(coords[2]); i++){
+				for(int i = 2; i < (sizeof(robPos)/sizeof(coords[2])); i++){
 					if(i != id){
 						reply[rchar++] = i + '0';
 						reply[rchar++] = ':';
@@ -88,9 +88,10 @@ int _tmain(int argc, _TCHAR* argv[])
 						reply[rchar++] = '_';
 					}
 				}// end loop
-				reply[rchar] = '\n';
+				reply[rchar++] = '\n';
 				//cout << "\t" << reply << endl;
 				SP->WriteData(reply, rchar);
+				cout << "\a";
 
 				// If target position report
 			}else if(datastr.find("targ")!=string::npos){
