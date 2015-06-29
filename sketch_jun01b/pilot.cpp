@@ -22,23 +22,30 @@ void PILOT::stop(/*NXShield& nxt*/)
 // Left turn
 void PILOT::turnLeft()
 {
+  // Turn roughly 60 degrees then search for line
         pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Reverse, (25));
         pNxShield->bank_a.motorRunUnlimited(SH_Motor_2, SH_Direction_Forward, (25));
-        delay(850);
-   
+        delay(560);
+
+        pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Reverse, (20));
+        pNxShield->bank_a.motorRunUnlimited(SH_Motor_2, SH_Direction_Forward, (20));
+        while(abs(pNxLight_1->readRaw()-pNxLight_2->readRaw())<200){}
         pNxShield->bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
-	delay(500);
+	      delay(200);
 }
 
 // Right turn
 void PILOT::turnRight()
 {	      
-	pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Forward, (25));
+	      pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Forward, (25));
         pNxShield->bank_a.motorRunUnlimited(SH_Motor_2, SH_Direction_Reverse, (25));
-        delay(850);
-
+        delay(560);
+        
+        pNxShield->bank_a.motorRunUnlimited(SH_Motor_1, SH_Direction_Forward, (25));
+        pNxShield->bank_a.motorRunUnlimited(SH_Motor_2, SH_Direction_Reverse, (25));
+        while(abs(pNxLight_1->readRaw()-pNxLight_2->readRaw())<200){}
         pNxShield->bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
-	delay(500);
+	      delay(200);
 }
 
 // U-Turn
