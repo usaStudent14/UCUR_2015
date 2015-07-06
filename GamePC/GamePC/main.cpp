@@ -118,7 +118,7 @@ int _tmain(int argc, _TCHAR* argv[])
 						}// end loop
 
 						if(goID >= 0){
-							permiss[3] = goID+'0';
+							permiss[3] = goID+'A';
 							SP->WriteData(permiss, 6);
 						}
 						else{
