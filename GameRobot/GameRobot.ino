@@ -21,12 +21,12 @@ struct coords {
   int y = 5;
 };
 
-const char ID =  'B';             // Unique id for each robot
-coords remote_pos[2][2];          // Initialize to number of robots in system
+const char ID =  'A';             // Unique id for each robot
+coords remote_pos[1][2];          // Initialize to number of robots in system
                                   // Holds current pos at the top and target pos at the bottom
 QueueArray<coords> targets;       // Destinations, in order, of the robot
 QueueArray<coords> path;          // Current path of the robot
-int robNum = 2;                   // Number of robots
+int robNum = 1;                   // Number of robots
 String inputString = "";          // used for xbee recieve
 coords currentPos;                // Current position
 int heading = 0;                  // Initial heading of robot
@@ -54,8 +54,6 @@ void setup() {
   delay(500);
 
   inputString.reserve(200);
-
-  findPath();// initial path
   
   nxshield.init(SH_HardwareI2C);
   
@@ -82,6 +80,8 @@ void setup() {
   rfid.transferToBuffer(tagData, tagDataBuffer);
   get_pos();
 
+  findPath();// initial path
+  
   nxshield.ledSetRGB(5, 0, 0);
 }
 
@@ -92,11 +92,13 @@ void loop() {
     targets.pop();
     if(targets.isEmpty())
       quit();
+    else
+      findPath();
   }
   
   outBuff[9] = currentPos.x + '0';
   outBuff[11] = currentPos.y + '0';
-  bool goodString = false;
+  bool goodString = true;
   do{
     inputString = "";
   
@@ -168,9 +170,16 @@ void mapInit()
 // initialize array of targets
 void targInit(){
   coords targ;
-  targ.x = 4;
+  targ.x = 3;
   targ.y = 0;
-  
+  targets.push(targ);
+
+  targ.x = 1;
+  targ.y = 3;
+  targets.push(targ);
+
+  targ.x = 4;
+  targ.y = 2;
   targets.push(targ);
 }
 
@@ -232,11 +241,11 @@ void get_pos() {
       {
         currentPos.x = x;
         currentPos.y = y;
-        }
         return;
       }
-    }// end loop
-  }
+    }
+  }// end loop
+}
 
 
 /**
@@ -246,7 +255,17 @@ void get_pos() {
  */
 int nextMove() {
   // if a tag was skipped
+  Serial.print(currentPos.x);
+  Serial.print(",");
+  Serial.print(currentPos.y);
+  Serial.print(" = ");
+  Serial.print(path.peek().x);
+  Serial.print(",");
+  Serial.print(path.peek().y);
+  Serial.println(" ?");
+  
   if(currentPos.x!=path.peek().x || currentPos.y!=path.peek().y){
+    Serial.println("Error: off path");
     findPath();
   }else{
     path.pop();
@@ -288,10 +307,11 @@ int nextMove() {
  * global destination.
  */
 void findPath(){
+  rfid.errorSound();
   QueueArray<coords> newPath;
   coords dest = targets.peek();
   coords next = currentPos;
-
+  
   while(next.x!=dest.x || next.y!=dest.y){
 
     int x_dif = dest.x - next.x;
@@ -299,37 +319,47 @@ void findPath(){
     coords temp = next;
     
     if(abs(x_dif)>abs(y_dif)){
-      temp.x = temp.x + x_dif;
+      temp.x = temp.x + signum(x_dif);
     }else{
-      temp.y = temp.y + y_dif; 
+      temp.y = temp.y + signum(y_dif); 
     }
 
     // the first step must be available
     if(newPath.isEmpty() && !tagRef[temp.x][temp.y].isAvailable()){
+      Serial.println("Picking alternate path");
       temp = next;
       if(abs(x_dif)<abs(y_dif)){
-        temp.x = next.x + x_dif;
+        temp.x = next.x + signum(x_dif);
         if(temp.x<0 || temp.x>4){// if off the board
-          temp.x = next.x - x_dif;
+          temp.x = next.x - signum(x_dif);
         }
       }else{
-        temp.y = next.y + y_dif;
+        temp.y = next.y + signum(y_dif);
         if(temp.y<0 || temp.y>4){// if off the board
-          temp.y = next.y - y_dif;
+          temp.y = next.y - signum(y_dif);
         }
       }
     }// end if first step unavailable
 
+    Serial.print("(");
+    Serial.print(temp.x);
+    Serial.print(",");
+    Serial.print(temp.y);
+    Serial.print(")-");
     newPath.push(temp);
     next = temp;
   }// end loop
 
-  newPath.push(dest);
+  Serial.print("(");
+  Serial.print(dest.x);
+  Serial.print(",");
+  Serial.print(dest.y);
+  Serial.println(")");
   path = newPath;
 }
 /*
   Takes in a target heading, turns the robot the
-  appropriate amount, and moves straight alongh the
+  appropriate amount, and moves straight along the
   grid till a new RFID is read. Sets tagData as a
   side effect.
 */
@@ -384,7 +414,7 @@ void serialEvent() {
 }
 
 int signum(int val) {
-  return ((0 < val) - (0 > val));
+  return (int)((0 < val) - (0 >= val));
 }
 
 /**

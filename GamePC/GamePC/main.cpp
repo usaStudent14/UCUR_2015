@@ -11,7 +11,7 @@ using namespace std;
 // application reads from the specified serial port and reports the collected data
 int _tmain(int argc, _TCHAR* argv[])
 {
-	Robot robs[2];// Hardcode to number of bots
+	Robot robs[1];// Hardcode to number of bots
 
 	fstream fileOut1("data1.txt", ios::out);
 
@@ -23,8 +23,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	string datastr = "";
 	bool stringComplete = false;
 
-	int robCount = 2;// number of robots
-	int doneCount = 0;// number of robots that have completed the tour
+	int robCount = 1;// number of robots
+	int doneCount = 0;// number of robots that have completed the game
 	int synchCount = 0;// number of robots waiting to synch target data
 	int callID = -1;
 
@@ -91,7 +91,6 @@ int _tmain(int argc, _TCHAR* argv[])
 					reply[rchar++] = '\n';
 				
 					SP->WriteData(reply, rchar);
-
 					// If target position report
 				}else if(datastr.find("targ")!=string::npos){
 					if(synchCount<robCount){

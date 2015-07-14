@@ -15,7 +15,7 @@ RFIDuino rfid;
 
 PILOT pilot(nxshield, light1, light2, rfid);
 
-const char ID =  'A';  // Unique id for each robot
+const char ID =  'B';  // Unique id for each robot
 
 struct coords {
   int x = 5;

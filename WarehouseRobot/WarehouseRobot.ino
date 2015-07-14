@@ -15,8 +15,8 @@ RFIDuino rfid;
 
 PILOT pilot(nxshield, light1, light2, rfid);
 
-const int LDOCK = 12;
-const int START = 4;
+const int LDOCK = 6;
+const int START = 5;
 
 int position = START;     //Current Position of the robot
 int target = -1;          //Current target of the robot
@@ -51,22 +51,27 @@ void setup() {
   light1.setReflected();
   light2.setReflected();
   pilot.resetMotors();
-  
+
+  nxshield.ledSetRGB(0, 5, 0);
+   
   delay(500);
+
+  Serial.print(START);
 }
 
 void loop() {
-  inputString = "";
-  serialEvent();
-  
-  // Read target from system
-  while(inputString == ""){
-    inputString = "";
-    serialEvent();
-  }// end loop
+  target = 9;// Default dummy value
 
-  target = inputString.toInt();
+  // Read target from system
+  while(target == 9){
+    inputString = "";
+    while(inputString == ""){
+      serialEvent();
+    }// end loop
   
+    target = inputString[0] - '0';
+  }
+
   // Move towards assembly line target
   move(target);
   
@@ -85,7 +90,13 @@ void loop() {
 
 // Initializes map with tag ID's
 void mapInit(){
-  
+  tagRef[0].setTagData(121, 0, 114, 163, 72); //Line A
+  tagRef[1].setTagData(121, 0, 114, 187, 52); //Line B
+  tagRef[2].setTagData(121, 0, 114, 134, 137);//Line C
+  tagRef[3].setTagData(121, 0, 114, 192, 13); //Line D
+  tagRef[4].setTagData(121, 0, 114, 150, 213);//Line E
+  tagRef[5].setTagData(121, 0, 114, 90, 77);  //Door
+  tagRef[6].setTagData(121, 0, 114, 133, 51); //Loading Dock
 }
 
 /* 
@@ -94,7 +105,7 @@ void mapInit(){
 */
 void getPos(){
    bool tagComp = false;
-   for (int i = 0; i < 12; i++){
+   for (int i = 0; i < 7; i++){
      tagComp = rfid.compareTagData(tagData, tagRef[i].tagData);
      if (tagComp){
        position = i;
@@ -123,12 +134,13 @@ void move(int currentTarg){
       if (rfid.decodeTag(tempTagData))
         rfid.transferToBuffer(tempTagData, tagData);
     }// end inner loop
+    rfid.transferToBuffer(tagData, tagDataBuffer);
     getPos();// ID current tag
-    Serial.println(position);// Broadcast location
+    Serial.print(position);// Broadcast location
     
     //Tag checks to compensate for scale difference
-    if(position == 5){// adjust number later
-      if(loaded)
+    if(position == 5){
+      if(heading == 1)
         pilot.setSpeed(9);
       else
         pilot.setSpeed(24);
@@ -145,6 +157,9 @@ void move(int currentTarg){
  */
 void grabPallet(){
   loaded = true;
+  pilot.backupLeft(tagDataBuffer);
+  
+  heading = 1;
 }
 
 /*
@@ -154,6 +169,9 @@ void grabPallet(){
  */
 void dropPallet(){
   loaded = false;
+  pilot.backupRight();
+    
+  heading = 0;
 }
 
 /*

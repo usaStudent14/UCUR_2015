@@ -30,6 +30,8 @@ public:
 
   void setSpeed(int speed);
 	void stop();
+  void backupLeft(byte (&tagBuffer)[5]);
+  void backupRight();
 	void turnLeft();
 	void turnRight();
 	void uTurn();
