@@ -15,7 +15,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	fstream fileOut1("data1.txt", ios::out);
 
-	Serial* SP = new Serial("COM5");    // adjust as needed
+	Serial* SP = new Serial("COM8");    // adjust as needed
 
 	if (SP->IsConnected())
 		printf("System channel up...\n");
