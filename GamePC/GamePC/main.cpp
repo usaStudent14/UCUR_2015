@@ -209,17 +209,26 @@ DWORD WINAPI messageRead( LPVOID lpParam ){
 	// it was checked for NULL before the thread was created.
 	pData = (PMYDATA)lpParam;
 
-	while (!systemFin){
-		SP->ReadData(pData->in, 1);
+	char inT[2];
+	string messageT = "";
 
-		if(pData->in[0] != '\n' && pData->in[0] != pData->message.back()){
-			pData->message += pData->in[0];
+	while (!systemFin){
+		SP->ReadData(inT, 1);
+
+		if(inT[0] != '\n' && inT[0] != '\0'){
+			if(messageT.empty()){
+				messageT += inT[0];
+			}
+			if(!messageT.empty()){
+				if(inT[0] != messageT.back()){
+					messageT += inT[0];
+				}
+			}
+		}else{
+			msgQ.push(messageT);
+			messageT = "";
 		}
-		else{
-			msgQ.push(pData->message);
-			pData->message = "";
-		}
-	}
+	}// end loop
 
 	return 0; 
 }
