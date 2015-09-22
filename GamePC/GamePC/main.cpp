@@ -7,23 +7,22 @@
 #include <windows.h>
 #include <tchar.h>
 #include <strsafe.h>
-
+#include <mutex>
+#include <thread>
 #include "SerialClass.h"	// Library described above
 #include "Robot.h"
 
-using namespace std;
 
-typedef struct MyData {
-	char in[2];
-	string message;
-} MYDATA, *PMYDATA;
+using namespace std;
 
 //Global variables
 Serial* SP; // Serial connection
 queue<string, list<string>> msgQ;
 bool systemFin;
+mutex foobar;
 
-DWORD WINAPI messageRead( LPVOID lpParam );
+
+void messageRead();
 
 // application reads from the specified serial port and reports the collected data
 int _tmain(int argc, _TCHAR* argv[])
@@ -33,31 +32,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	systemFin = false;
 	//fstream fileOut1("data1.txt", ios::out);
 
-	SP = new Serial("COM6");    // adjust as needed
+	SP = new Serial("COM5");    // adjust as needed
 	if (SP->IsConnected())
 		printf("System channel up...\n");
 
 	// Create a thread
-	PMYDATA pThreadData = (PMYDATA) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
-		sizeof(MYDATA));
-	DWORD threadID;
-	HANDLE threadH;
+	thread child(messageRead);
 
-	if(pThreadData == NULL){
-		return -1;
-	}
-
-	threadH = CreateThread( 
-		NULL,                   // default security attributes
-		0,                      // use default stack size  
-		messageRead,       // thread function name
-		pThreadData,          // argument to thread function 
-		0,                      // use default creation flags 
-		&threadID);   // returns the thread identifier 
-
-	if(threadH == NULL){
-		return -1;
-	}
 
 	int doneCount = 0;// number of robots that have completed the game
 	int synchCount = 0;// number of robots waiting to synch target data
@@ -93,10 +74,16 @@ int _tmain(int argc, _TCHAR* argv[])
 		string datastr = "";
 
 		if(!msgQ.empty()){
+		
+			cout << msgQ.front() << endl;
+			
+			foobar.lock();
 			datastr = msgQ.front();
 			msgQ.pop();
+			foobar.unlock();
 
-			printf(datastr.c_str());
+			
+			
 
 			if(datastr.find("rob")!=string::npos){
 				char idChar = datastr.at(3);
@@ -188,47 +175,56 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	systemFin = true;
 
-	WaitForSingleObject(threadH, threadID);
+	//WaitForSingleObject(threadH, threadID);
 
 	// Close all thread handle and free memory allocation.
-	CloseHandle(threadH);
-	HeapFree(GetProcessHeap(), 0, pThreadData);
-	pThreadData = NULL;    // Ensure address is not reused.
+	//CloseHandle(threadH);
+	//HeapFree(GetProcessHeap(), 0, NULL);
+	//pThreadData = NULL;    // Ensure address is not reused.
 
 	//fileOut1.close();
 
 	getchar();
+	child.join();
 	return 0;
 }
 
-DWORD WINAPI messageRead( LPVOID lpParam ){
-	PMYDATA pData;
-
-	// Cast the parameter to the correct data type.
-	// The pointer is known to be valid because 
-	// it was checked for NULL before the thread was created.
-	pData = (PMYDATA)lpParam;
-
+void messageRead(){
+	
 	char inT[2];
 	string messageT = "";
 
+
 	while (!systemFin){
+		//cout << msgQ.size() << endl;
 		SP->ReadData(inT, 1);
 
-		if(inT[0] != '\n' && inT[0] != '\0'){
+		if (inT[0] != '\n'){
+			
 			if(messageT.empty()){
-				messageT += inT[0];
-			}
-			if(!messageT.empty()){
-				if(inT[0] != messageT.back()){
+				if (inT[0] != 'Í'){
 					messageT += inT[0];
 				}
 			}
+			if(!messageT.empty()){
+
+				if(inT[0] != messageT.back()){
+					if (inT[0] != 'Í'){
+						messageT += inT[0];
+					}
+				}
+			}
 		}else{
-			msgQ.push(messageT);
+			if (!messageT.empty()){
+				foobar.lock();
+
+				msgQ.push(messageT);
+
+				foobar.unlock();
+			}
 			messageT = "";
 		}
 	}// end loop
 
-	return 0; 
+	return; 
 }
