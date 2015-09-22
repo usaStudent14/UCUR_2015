@@ -20,9 +20,7 @@ public:
 		targ.x = 5;
 		targ.y = 5;
 	}
-	void setPos(coords pos);
 	void setPos(int x, int y);
-	void setTarg(coords settarg);
 	void setTarg(int x, int y);
 	coords getPos();
 	coords getTarg();

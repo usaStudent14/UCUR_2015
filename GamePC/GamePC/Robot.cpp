@@ -1,15 +1,9 @@
 #include "Robot.h"
+#include <iostream>
 
-void Robot::setPos(coords pos){
-	currentPos = pos;
-}
 void Robot::setPos(int x, int y){
 	currentPos.x = x;
 	currentPos.y = y;
-}
-
-void Robot::setTarg(coords settarg){
-	targ = settarg;
 }
 
 void Robot::setTarg(int x, int y){

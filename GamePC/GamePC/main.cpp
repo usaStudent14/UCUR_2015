@@ -30,7 +30,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	const int ROBCOUNT = 2; //Hardcode to number of bots
 	Robot robs[ROBCOUNT];// Hardcode to number of bots
 	systemFin = false;
-	//fstream fileOut1("data1.txt", ios::out);
 
 	SP = new Serial("COM5");    // adjust as needed
 	if (SP->IsConnected())
@@ -82,9 +81,6 @@ int _tmain(int argc, _TCHAR* argv[])
 			msgQ.pop();
 			foobar.unlock();
 
-			
-			
-
 			if(datastr.find("rob")!=string::npos){
 				char idChar = datastr.at(3);
 				int id = idChar - 'A';
@@ -99,8 +95,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					// if not a duplicate
 					if(tempPos.x!=robs[id].getPos().x || tempPos.y!=robs[id].getPos().y){
 						//Store data
-						//fileOut1.write(datastr.c_str(), datastr.length());// file
-						robs[id].setPos(tempPos);
+						robs[id].setPos(tempPos.x, tempPos.y);
 						robs[id].incrementMoves();
 					}// end if duplicate
 
@@ -175,15 +170,6 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	systemFin = true;
 
-	//WaitForSingleObject(threadH, threadID);
-
-	// Close all thread handle and free memory allocation.
-	//CloseHandle(threadH);
-	//HeapFree(GetProcessHeap(), 0, NULL);
-	//pThreadData = NULL;    // Ensure address is not reused.
-
-	//fileOut1.close();
-
 	getchar();
 	child.join();
 	return 0;
@@ -201,17 +187,13 @@ void messageRead(){
 
 		if (inT[0] != '\n'){
 			
-			if(messageT.empty()){
-				if (inT[0] != 'Í'){
+			if(messageT.empty() && inT[0] > 0){
 					messageT += inT[0];
-				}
 			}
 			if(!messageT.empty()){
 
-				if(inT[0] != messageT.back()){
-					if (inT[0] != 'Í'){
+				if(inT[0] != messageT.back() && inT[0] > 0){
 						messageT += inT[0];
-					}
 				}
 			}
 		}else{
