@@ -21,12 +21,12 @@ struct coords {
   int y = 5;
 };
 
-const char ID =  'A';             // Unique id for each robot
-coords remote_pos[1][2];          // Initialize to number of robots in system
+const char ID =  'B';             // Unique id for each robot
+coords remote_pos[2][2];          // Initialize to number of robots in system
                                   // Holds current pos at the top and target pos at the bottom
 QueueArray<coords> targets;       // Destinations, in order, of the robot
 QueueArray<coords> path;          // Current path of the robot
-int robNum = 1;                   // Number of robots
+int robNum = 2;                   // Number of robots
 String inputString = "";          // used for xbee recieve
 coords currentPos;                // Current position
 int heading = 0;                  // Initial heading of robot
@@ -44,10 +44,15 @@ void findPath();
 void move(int targ_heading);
 void serialEvent();
 void quit();
+void printArray();
 
 int signum(int val);
 
 void setup() {
+  currentPos.x = 4;
+  currentPos.y = 3;
+  
+
   mapInit();
   targInit();
   Serial.begin(9600);
@@ -72,13 +77,14 @@ void setup() {
   outBuff[3] = ID;
   //ID initial location
   bool initRead = true;
-
+ 
+/*
   while (initRead) {
     initRead = !(rfid.decodeTag(tagData));
   }
-
+*/
   rfid.transferToBuffer(tagData, tagDataBuffer);
-  get_pos();
+  //get_pos();
 
   findPath();// initial path
   
@@ -86,7 +92,19 @@ void setup() {
 }
 
 
+void printArray(){
+for(int x=0;x<2;x++){
+  for(int y=0;y<2;y++){
+  Serial.print(remote_pos[x][y].x);
+  Serial.print(", ");
+  Serial.println(remote_pos[x][y].y);
+ }
+}
+
+}
+
 void loop() {
+  /*
   // if on current destination
   if(currentPos.x==targets.peek().x && currentPos.y==targets.peek().y){
     targets.pop();
@@ -95,7 +113,7 @@ void loop() {
     else
       findPath();
   }
-  
+  */
   outBuff[9] = currentPos.x + '0';
   outBuff[11] = currentPos.y + '0';
   bool goodString = true;
@@ -120,7 +138,7 @@ void loop() {
      goodString = parseInput();
 
   }while(!goodString);
-
+  /*
   //Pick move
   int targ_heading = nextMove();
 
@@ -134,7 +152,7 @@ void loop() {
 
   //ID new location
   get_pos();
-
+*/
 }
 
 // initialize the map with tag IDs
@@ -168,7 +186,9 @@ void mapInit()
 }
 
 // initialize array of targets
+
 void targInit(){
+/*
   coords targ;
   targ.x = 3;
   targ.y = 0;
@@ -181,9 +201,11 @@ void targInit(){
   targ.x = 4;
   targ.y = 2;
   targets.push(targ);
+  */
 }
 
 bool parseInput() {
+  
   int index = inputString.indexOf('_') + 1;
   if(index==0)
     return false;
@@ -223,7 +245,9 @@ bool parseInput() {
     index = b + 1;
   }
 
+  printArray();
   return true;
+  
 }
 
 /*
@@ -231,6 +255,7 @@ bool parseInput() {
  corresponding to current tag data
  */
 void get_pos() {
+  /*
   bool tagComp = false;
   for (int x = 0; x < 5; x++)
   {
@@ -245,6 +270,7 @@ void get_pos() {
       }
     }
   }// end loop
+  */
 }
 
 
@@ -254,6 +280,7 @@ void get_pos() {
  * whether the robot should move or reevaluate its path.
  */
 int nextMove() {
+  /*
   // if a tag was skipped
   Serial.print(currentPos.x);
   Serial.print(",");
@@ -300,6 +327,7 @@ int nextMove() {
       targ_heading = 3;
   }
   return targ_heading;
+  */
 }
 
 /**
@@ -307,6 +335,7 @@ int nextMove() {
  * global destination.
  */
 void findPath(){
+  /*
   rfid.errorSound();
   QueueArray<coords> newPath;
   coords dest = targets.peek();
@@ -356,6 +385,7 @@ void findPath(){
   Serial.print(dest.y);
   Serial.println(")");
   path = newPath;
+  */
 }
 /*
   Takes in a target heading, turns the robot the
@@ -364,6 +394,7 @@ void findPath(){
   side effect.
 */
 void move(int targ_heading) {
+  /*
   int turn;
   // Calculate turn increment
   if (targ_heading == 0 && heading == 3)
@@ -393,6 +424,7 @@ void move(int targ_heading) {
 
   }
   nxshield.bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
+  */
 }
 
 /*
@@ -402,6 +434,7 @@ void move(int targ_heading) {
  response.  Multiple bytes of data may be available.
  */
 void serialEvent() {
+  
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
@@ -411,10 +444,11 @@ void serialEvent() {
       return;
     }
   }
+  
 }
 
 int signum(int val) {
-  return (int)((0 < val) - (0 >= val));
+ // return (int)((0 < val) - (0 >= val));
 }
 
 /**
@@ -425,6 +459,7 @@ int signum(int val) {
  * unit to maneuver out of the way of any approaching units.
  */
 void quit() {
+  /*
   Serial.print("rob");
   Serial.print(ID);
   Serial.println("_done");
@@ -493,4 +528,5 @@ void quit() {
 
     Serial.println(targBuff);
   }// end loop
+  */
 }
