@@ -78,17 +78,20 @@ void setup() {
   //ID initial location
   bool initRead = true;
  
-/*
+
   while (initRead) {
     initRead = !(rfid.decodeTag(tagData));
   }
-*/
+  rfid.successSound();
+
   rfid.transferToBuffer(tagData, tagDataBuffer);
-  //get_pos();
+  get_pos();
 
   findPath();// initial path
   
   nxshield.ledSetRGB(5, 0, 0);
+
+
 }
 
 
@@ -104,6 +107,7 @@ for(int x=0;x<2;x++){
 }
 
 void loop() {
+  
   /*
   // if on current destination
   if(currentPos.x==targets.peek().x && currentPos.y==targets.peek().y){
@@ -139,20 +143,19 @@ void loop() {
 
   }while(!goodString);
   /*
-  //Pick move
+*/  //Pick move
   int targ_heading = nextMove();
 
   //Move
   move(targ_heading);
   rfid.transferToBuffer(tagData, tagDataBuffer);
-  rfid.successSound();
-
+/*
   // update heading
   heading = targ_heading;
-
+*/
   //ID new location
   get_pos();
-*/
+
 }
 
 // initialize the map with tag IDs
@@ -188,7 +191,7 @@ void mapInit()
 // initialize array of targets
 
 void targInit(){
-/*
+
   coords targ;
   targ.x = 3;
   targ.y = 0;
@@ -201,7 +204,7 @@ void targInit(){
   targ.x = 4;
   targ.y = 2;
   targets.push(targ);
-  */
+  
 }
 
 bool parseInput() {
@@ -255,7 +258,7 @@ bool parseInput() {
  corresponding to current tag data
  */
 void get_pos() {
-  /*
+  
   bool tagComp = false;
   for (int x = 0; x < 5; x++)
   {
@@ -270,7 +273,6 @@ void get_pos() {
       }
     }
   }// end loop
-  */
 }
 
 
@@ -335,17 +337,23 @@ int nextMove() {
  * global destination.
  */
 void findPath(){
-  /*
+ 
   rfid.errorSound();
   QueueArray<coords> newPath;
-  coords dest = targets.peek();
-  coords next = currentPos;
+  coords dest;
+  dest.x = targets.peek().x;
+  dest.y = targets.peek().y;
+  coords next;
+  next.x = currentPos.x;
+  next.y = currentPos.y;
   
   while(next.x!=dest.x || next.y!=dest.y){
 
     int x_dif = dest.x - next.x;
     int y_dif = dest.y - next.y;
-    coords temp = next;
+    coords temp;
+    temp.x = next.x;
+    temp.y = next.y;
     
     if(abs(x_dif)>abs(y_dif)){
       temp.x = temp.x + signum(x_dif);
@@ -376,16 +384,11 @@ void findPath(){
     Serial.print(temp.y);
     Serial.print(")-");
     newPath.push(temp);
-    next = temp;
+    next.x = temp.x;
+    next.y = temp.y;
   }// end loop
-
-  Serial.print("(");
-  Serial.print(dest.x);
-  Serial.print(",");
-  Serial.print(dest.y);
-  Serial.println(")");
-  path = newPath;
-  */
+//path = newPath;
+  
 }
 /*
   Takes in a target heading, turns the robot the
@@ -394,7 +397,7 @@ void findPath(){
   side effect.
 */
 void move(int targ_heading) {
-  /*
+  
   int turn;
   // Calculate turn increment
   if (targ_heading == 0 && heading == 3)
@@ -416,15 +419,18 @@ void move(int targ_heading) {
   // Travel straight to next position
   nxshield.bank_a.motorRunUnlimited(SH_Motor_Both, SH_Direction_Forward, 20);
   delay(500);
+ 
   while (rfid.compareTagData(tagData, tagDataBuffer)) {
     pilot.straight();
 
-    if (rfid.decodeTag(tempTagData))
+    if (rfid.decodeTag(tempTagData)){
+      rfid.successSound();
       rfid.transferToBuffer(tempTagData, tagData);
-
+    }
   }
+  
   nxshield.bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
-  */
+  
 }
 
 /*
@@ -448,7 +454,7 @@ void serialEvent() {
 }
 
 int signum(int val) {
- // return (int)((0 < val) - (0 >= val));
+  return (int)((0 < val) - (0 >= val));
 }
 
 /**
