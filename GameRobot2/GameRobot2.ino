@@ -19,7 +19,16 @@ PILOT pilot(nxshield, light1, light2, rfid);
 struct coords {
   int x = 5;
   int y = 5;
+
+coords& operator=(const coords& o){
+  x=o.x;
+  y=o.y;
+  return *this;
+}
+
 };
+
+
 
 const char ID =  'B';             // Unique id for each robot
 coords remote_pos[2][2];          // Initialize to number of robots in system
@@ -88,6 +97,7 @@ void setup() {
   get_pos();
 
   findPath();// initial path
+  findPath();
   
   nxshield.ledSetRGB(5, 0, 0);
 
@@ -142,17 +152,17 @@ void loop() {
      goodString = parseInput();
 
   }while(!goodString);
-  /*
-*/  //Pick move
+  
+  //Pick move
   int targ_heading = nextMove();
 
   //Move
   move(targ_heading);
   rfid.transferToBuffer(tagData, tagDataBuffer);
-/*
+
   // update heading
   heading = targ_heading;
-*/
+
   //ID new location
   get_pos();
 
@@ -336,6 +346,20 @@ int nextMove() {
  * Finds the shortest path to the current
  * global destination.
  */
+
+ 
+void printQueue(){
+  QueueArray<coords> temp= path;
+  while(!temp.isEmpty()){
+    Serial.print(temp.peek().x);
+    Serial.print(", ");
+    Serial.println(temp.peek().y);
+    temp.pop();
+  }
+  
+}
+
+ 
 void findPath(){
  
   rfid.errorSound();
@@ -346,6 +370,8 @@ void findPath(){
   coords next;
   next.x = currentPos.x;
   next.y = currentPos.y;
+  
+  path.push(next);
   
   while(next.x!=dest.x || next.y!=dest.y){
 
@@ -387,7 +413,10 @@ void findPath(){
     next.x = temp.x;
     next.y = temp.y;
   }// end loop
-//path = newPath;
+
+Serial.println();
+path = newPath;
+printQueue();  
   
 }
 /*
