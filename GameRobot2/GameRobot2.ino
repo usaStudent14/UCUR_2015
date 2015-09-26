@@ -20,9 +20,9 @@ struct coords {
   int x = 5;
   int y = 5;
 
-coords& operator=(const coords& o){
-  x=o.x;
-  y=o.y;
+coords operator=(const coords& o){
+  this->x=o.x;
+  this->y=o.y;
   return *this;
 }
 
@@ -98,6 +98,7 @@ void setup() {
 
   findPath();// initial path
   findPath();
+  findPath();
   
   nxshield.ledSetRGB(5, 0, 0);
 
@@ -123,7 +124,7 @@ void loop() {
   if(currentPos.x==targets.peek().x && currentPos.y==targets.peek().y){
     targets.pop();
     if(targets.isEmpty())
-      quit();
+      quit();3
     else
       findPath();
   }
@@ -203,8 +204,8 @@ void mapInit()
 void targInit(){
 
   coords targ;
-  targ.x = 3;
-  targ.y = 0;
+  targ.x = 4;
+  targ.y = 4;
   targets.push(targ);
 
   targ.x = 1;
@@ -371,7 +372,7 @@ void findPath(){
   next.x = currentPos.x;
   next.y = currentPos.y;
   
-  path.push(next);
+  newPath.push(next);
   
   while(next.x!=dest.x || next.y!=dest.y){
 
