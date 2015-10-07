@@ -33,7 +33,8 @@ coords operator=(const coords& o){
 const char ID =  'A';             // Unique id for each robot
 coords remote_pos[2][2];          // Initialize to number of robots in system
                                   // Holds current pos at the top and target pos at the bottom
-QueueArray<coords> targets;       // Destinations, in order, of the robot
+coords targets [9];               // Destinations, in order, of the robot
+int tIndex = 0;                    // Index of current target
 QueueArray<coords> path;          // Current path of the robot
 int robNum = 2;                   // Number of robots
 String inputString = "";          // used for xbee recieve
@@ -54,8 +55,12 @@ void move(int targ_heading);
 void serialEvent();
 void quit();
 void printArray();
+bool arrayEmpty();
+int findClosest();
+void checkOppPos();
 
 int signum(int val);
+
 
 void setup() {
   currentPos.x = 4;
@@ -122,13 +127,14 @@ void loop() {
   
   
   // if on current destination
-  if(!targets.isEmpty() && currentPos.x==targets.peek().x && currentPos.y==targets.peek().y){
-    targets.pop();
-      if(!targets.isEmpty()){
+  if(!arrayEmpty() && currentPos.x==targets[tIndex].x && currentPos.y==targets[tIndex].y){
+    targets[tIndex].x = 5;
+    targets[tIndex].y = 5;
+      if(!arrayEmpty()){
         findPath();
       }
   }
-  if(targets.isEmpty())
+  if(arrayEmpty())
     quit();
   
   
@@ -156,6 +162,9 @@ void loop() {
      goodString = parseInput();
 
   }while(!goodString);
+  
+  // Check opponent's position
+  checkOppPos();
   
   //Pick move
   int targ_heading = nextMove();
@@ -205,36 +214,33 @@ void mapInit()
 // initialize array of targets
 
 void targInit(){
-/*  
- //B
-  coords targ;
-  targ.x = 1;
-  targ.y = 1;
-  targets.push(targ);
+targets[0].x=3;
+targets[0].y=3;
 
-  targ.x = 2;
-  targ.y = 3;
-  targets.push(targ);
+targets[1].x=1;
+targets[1].y=4;
 
-  targ.x = 4;
-  targ.y = 0;
-  targets.push(targ);
-*/
-  //A
-  coords targ;
-  targ.x = 2;
-  targ.y = 2;
-  targets.push(targ);
+targets[2].x=2;
+targets[2].y=3;
 
-  targ.x = 2;
-  targ.y = 0;
-  targets.push(targ);
+targets[3].x=1;
+targets[3].y=0;
 
-  targ.x = 2;
-  targ.y = 4;
-  targets.push(targ);
+targets[4].x=4;
+targets[4].y=0;
 
-   
+targets[5].x=2;
+targets[5].y=1;
+
+targets[6].x=5;
+targets[6].y=5;
+
+targets[7].x=5;
+targets[7].y=5;
+
+targets[8].x=5;
+targets[8].y=5;
+
 }
 
 bool parseInput() {
@@ -390,30 +396,22 @@ int nextMove() {
  * Finds the shortest path to the current
  * global destination.
  */
-
- 
-void printQueue(){
-  QueueArray<coords> temp;
-  
-  while(!temp.isEmpty()){
-    Serial.print(temp.peek().x);
-    Serial.print(", ");
-    Serial.println(temp.peek().y);
-    temp.pop();
-  }
-  
-}
-
  
 void findPath(){
  Serial.print(ID);
  Serial.print("- ");
  
+  // Find closest target
+  int tIndex = findClosest();
+  
+  if(tIndex == -1)//empty array
+    quit();
+    
   rfid.errorSound();
   QueueArray<coords> newPath;
   coords dest;
-  dest.x = targets.peek().x;
-  dest.y = targets.peek().y;
+  dest.x = targets[tIndex].x;
+  dest.y = targets[tIndex].y;
   coords next;
   next.x = currentPos.x;
   next.y = currentPos.y;
@@ -614,5 +612,54 @@ void quit() {
 
     Serial.println(targBuff);
   }// end loop
+}
+
+
+bool arrayEmpty(){
+  //Dummy value is 5,5
+  for(int i=0; i<9; i++ ){
+    if(targets[i].x!=5||targets[i].y!=5){
+       return false;
+    }
+  }
+  return true;
+}
+
+void checkOppPos(){
+  int index=-1;
+  for(int i=0; i<robNum;i++){
+   if(i==ID-'A'){continue;}
+    for(int j=0; j<9; j++){
+        if(remote_pos[i][0].x==targets[j].x && remote_pos[i][0].y==targets[j].y){
+            index=j;
+            break;
+        }
+    }
+  }  
+  if(index==-1)
+  {return;}
   
+  targets[index].x=5;
+  targets[index].y=5;
+  
+  if(index==tIndex){
+    findPath();
+  }
+  
+}
+  
+int findClosest(){
+  float closest=25;
+  int index=-1;
+  for(int i=0; i<9; i++){
+    if(targets[i].x==5&&targets[i].y==5){continue;}
+    float distance = sqrt(sq(currentPos.x-targets[i].x) + sq(currentPos.y-targets[i].y));
+    
+    if(distance<closest){
+      closest=distance;
+      index=i;
+    }
+
+  }
+  return index;
 }
