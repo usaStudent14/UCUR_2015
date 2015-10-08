@@ -58,15 +58,12 @@ void printArray();
 bool arrayEmpty();
 int findClosest();
 void checkOppPos();
-
 int signum(int val);
 
 
-void setup() {
-  currentPos.x = 4;
-  currentPos.y = 3;
-  
 
+void setup() {
+  
   mapInit();
   targInit();
   Serial.begin(9600);
@@ -124,12 +121,20 @@ for(int x=0;x<2;x++){
 }
 
 void loop() {
-  
+    Serial.print(ID);
+    Serial.print("- ");
+    Serial.print(tIndex);
+    Serial.print(" : ");
+    Serial.print(targets[tIndex].x);
+    Serial.print(", ");
+    Serial.print(targets[tIndex].y);
+    Serial.println(" -Called from loop()");
   
   // if on current destination
   if(!arrayEmpty() && currentPos.x==targets[tIndex].x && currentPos.y==targets[tIndex].y){
     targets[tIndex].x = 5;
     targets[tIndex].y = 5;
+    
       if(!arrayEmpty()){
         findPath();
       }
@@ -164,7 +169,7 @@ void loop() {
   }while(!goodString);
   
   // Check opponent's position
-  checkOppPos();
+ // checkOppPos();
   
   //Pick move
   int targ_heading = nextMove();
@@ -402,7 +407,9 @@ void findPath(){
  Serial.print("- ");
  
   // Find closest target
-  int tIndex = findClosest();
+  tIndex = findClosest();
+  Serial.print("The tIndex in findPath() is: ");
+  Serial.println(tIndex);
   
   if(tIndex == -1)//empty array
     quit();
@@ -661,5 +668,9 @@ int findClosest(){
     }
 
   }
+  
+  Serial.print("findclosest() says this is a valid number: ");
+  Serial.println(index);
   return index;
 }
+
