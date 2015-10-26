@@ -8,6 +8,7 @@
 #include "StopWatch.h"
 #include "tag.h"
 #include "pilot.h"
+#include "vector.h"
 
 NXShield nxshield;
 NXTLight light1;
@@ -16,24 +17,13 @@ RFIDuino rfid;
 
 PILOT pilot(nxshield, light1, light2, rfid);
 
-struct coords {
-  int x = 5;
-  int y = 5;
-
-coords operator=(const coords& o){
-  this->x=o.x;
-  this->y=o.y;
-  return *this;
-}
-
-};
 
 
 
-const char ID =  'B';             // Unique id for each robot
+const char ID =  'A';             // Unique id for each robot
 coords remote_pos[2][2];          // Initialize to number of robots in system
-                                  // Holds current pos at the top and target pos at the bottom
-QueueArray<coords> targets;       // Destinations, in order, of the robot
+// Holds current pos at the top and target pos at the bottom
+vector targets;                   // Destinations, in order, of the robot
 QueueArray<coords> path;          // Current path of the robot
 int robNum = 2;                   // Number of robots
 String inputString = "";          // used for xbee recieve
@@ -58,21 +48,16 @@ void printArray();
 int signum(int val);
 
 void setup() {
-  currentPos.x = 4;
-  currentPos.y = 3;
-  
+  Serial.begin(9600);
+  delay(500);
+  nxshield.init(SH_HardwareI2C);
+
+  nxshield.waitForButtonPress(BTN_GO);
 
   mapInit();
   targInit();
-  Serial.begin(9600);
-  delay(500);
-
   inputString.reserve(200);
-  
-  nxshield.init(SH_HardwareI2C);
-  
-  nxshield.waitForButtonPress(BTN_GO);
-  
+
   light1.init(&nxshield, SH_BAS2);
   light2.init(&nxshield, SH_BBS2);
 
@@ -86,7 +71,7 @@ void setup() {
   outBuff[3] = ID;
   //ID initial location
   bool initRead = true;
- 
+
 
   while (initRead) {
     initRead = !(rfid.decodeTag(tagData));
@@ -97,51 +82,53 @@ void setup() {
   get_pos();
 
   findPath();// initial path
-  
-  
+
+
   nxshield.ledSetRGB(5, 0, 0);
 
 
 }
 
 
-void printArray(){
-  Serial.print(ID);
-  Serial.println("-");
-for(int x=0;x<2;x++){
-  for(int y=0; y<2 && x!=(ID-'A') ;y++){
-  Serial.print(remote_pos[x][y].x);
-  Serial.print(", ");
-  Serial.println(remote_pos[x][y].y);
- }
-}
+void printArray() {
+  //Serial.print(ID);
+  //Serial.println("-");
+  for (int x = 0; x < 2; x++) {
+    for (int y = 0; y < 2 && x != (ID - 'A') ; y++) {
+      //Serial.print(remote_pos[x][y].x);
+      //Serial.print(", ");
+      //Serial.println(remote_pos[x][y].y);
+    }
+  }
 
 }
 
 void loop() {
-  
-  
+  //targets.printVector();
+
+
   // if on current destination
-  if(!targets.isEmpty() && currentPos.x==targets.peek().x && currentPos.y==targets.peek().y){
-    targets.pop();
-      if(!targets.isEmpty()){
-        findPath();
-      }
+  if (!targets.isEmpty() && currentPos.x == targets.getCoords().x && currentPos.y == targets.getCoords().y) {
+    targets.deleteCoords();
+    if (!targets.isEmpty()) {
+      findPath();
+    }
   }
-  if(targets.isEmpty())
+  if (targets.isEmpty())
     quit();
-  
-  
+
+
+
   outBuff[9] = currentPos.x + '0';
   outBuff[11] = currentPos.y + '0';
   bool goodString = true;
-  do{
+  do {
     inputString = "";
-  
+
     //Broadcast location
     Serial.println(outBuff);
     serialEvent();
-  
+
     int count = 1;
     while (inputString.charAt(3) != ID) {
       inputString = "";
@@ -151,12 +138,12 @@ void loop() {
       }
       count++;
     }// end loop
-  
-    if (inputString.length() > 8)
-     goodString = parseInput();
 
-  }while(!goodString);
-  
+    if (inputString.length() > 8)
+      goodString = parseInput();
+
+  } while (!goodString);
+
   //Pick move
   int targ_heading = nextMove();
 
@@ -203,91 +190,94 @@ void mapInit()
 }
 
 // initialize array of targets
+void targInit() {
 
-void targInit(){
+  inputString = "";
+  serialEvent();
 
- //B
-  coords targ;
-  targ.x = 1;
-  targ.y = 1;
-  targets.push(targ);
+  while (inputString.charAt(0) != 'd') {
+    //done message='d'
+    //coordinate messages are #,#
+    coords empty;
+    if (inputString.charAt(1) == ',') {
+      empty.x = inputString.charAt(0) - '0';
+      empty.y = inputString.charAt(2) - '0';
 
-  targ.x = 2;
-  targ.y = 3;
-  targets.push(targ);
+      if (!targets.duplicateCheck(empty)) {
+        targets.addCoords(empty);
+      }
+    }
 
-  targ.x = 4;
-  targ.y = 0;
-  targets.push(targ);
-/*
-  //A
-  coords targ;
-  targ.x = 2;
-  targ.y = 2;
-  targets.push(targ);
+    inputString = "";
+    serialEvent();
+  }
 
-  targ.x = 2;
-  targ.y = 0;
-  targets.push(targ);
-
-  targ.x = 2;
-  targ.y = 4;
-  targets.push(targ);
-*/
-   
 }
 
 bool parseInput() {
-  
+
   int index = inputString.indexOf('_') + 1;
-  if(index==0)
+  if (index == 0)
     return false;
-  while (inputString.charAt(index)!= '\n') {
+
+  if ((inputString.charAt(index) - '0') < 0 || (inputString.charAt(index) - '0') >= robNum ) {
+    return false;
+  }
+
+  while (inputString.charAt(index) != '\n') {
     int a = inputString.indexOf(':', index);
     int b = inputString.indexOf(',', a);
-    if(a<0 || b<0)
+    if (a < 0 || b < 0)
       return false;
     // Set current position
     int posX = inputString.substring(a + 1, b).toInt();
-    
+
     a = b;
     b = inputString.indexOf(':', a);
-    if(b<0)
+    if (b < 0)
       return false;
     int posY = inputString.substring(a + 1, b).toInt();
     // Adjust availablilty
-    tagRef[remote_pos[inputString.charAt(index)-'0'][0].x][remote_pos[inputString.charAt(index)-'0'][0].y].setAvailable(true);
-    tagRef[posX][posY].setAvailable(false);
+    tagRef[remote_pos[inputString.charAt(index) - '0'][0].x][remote_pos[inputString.charAt(index) - '0'][0].y].setAvailable(true);
+    if (posX >= 0 && posX <= 4 && posY >= 0 && posY <= 4) {
+      tagRef[posX][posY].setAvailable(false);
+    }
     remote_pos[inputString.charAt(index) - '0'][0].x = posX;
     remote_pos[inputString.charAt(index) - '0'][0].y = posY;
-   
+
     a = b;
     b = inputString.indexOf(',', a);
-    if(b<0)
+    if (b < 0)
       return false;
 
     // Set target
     int targX = inputString.substring(a + 1, b).toInt();
-   
-    
+
+
     a = b;
     b = inputString.indexOf('_', a);
-    if(b<0)
+    if (b < 0)
       return false;
-     int targY = inputString.substring(a + 1, b).toInt(); 
-  
-    tagRef[remote_pos[inputString.charAt(index)-'0'][1].x][remote_pos[inputString.charAt(index)-'0'][1].y].setAvailable(true);
-    tagRef[targX][targY].setAvailable(false);
-    
+    int targY = inputString.substring(a + 1, b).toInt();
+
+    tagRef[remote_pos[inputString.charAt(index) - '0'][1].x][remote_pos[inputString.charAt(index) - '0'][1].y].setAvailable(true);
+    if (targX >= 0 && targX <= 4 && targY >= 0 && targY <= 4) {
+      tagRef[targX][targY].setAvailable(false);
+    }
     remote_pos[inputString.charAt(index) - '0'][1].x = targX;
     remote_pos[inputString.charAt(index) - '0'][1].y = targY;
-   
+
     index = b + 1;
   }
 
-  printArray();
+  //printArray();
+
+  if (targets.checkOppPos(robNum, ID, remote_pos)) {
+    findPath();
+  }
+
   return true;
-  
+
 }
 
 /*
@@ -295,7 +285,7 @@ bool parseInput() {
  corresponding to current tag data
  */
 void get_pos() {
-  
+
   bool tagComp = false;
   for (int x = 0; x < 5; x++)
   {
@@ -315,75 +305,75 @@ void get_pos() {
 
 /**
  * Takes the next move on the current path, determines if it
- * is available, and based on that information decides 
+ * is available, and based on that information decides
  * whether the robot should move or reevaluate its path.
  */
 int nextMove() {
   // if a tag was skipped
-  
-  /*Serial.print(currentPos.x);
-  Serial.print(",");
-  Serial.print(currentPos.y);
-  Serial.print(" = ");
-  Serial.print(path.peek().x);
-  Serial.print(",");
-  Serial.print(path.peek().y);
-  Serial.println(" ?");
+
+  /*//Serial.print(currentPos.x);
+  //Serial.print(",");
+  //Serial.print(currentPos.y);
+  //Serial.print(" = ");
+  //Serial.print(path.peek().x);
+  //Serial.print(",");
+  //Serial.print(path.peek().y);
+  //Serial.println(" ?");
   */
-  
-  
-  if(currentPos.x!=path.peek().x || currentPos.y!=path.peek().y){
-    Serial.println("Error: off path");
+
+
+  if (currentPos.x != path.peek().x || currentPos.y != path.peek().y) {
+    //Serial.println("Error: off path");
     findPath();
-  }else{
+  } else {
     path.pop();
   }
-  
+
   // Retrieve next step in path
   coords next ;
-  next= path.peek();
-  
-  
+  next = path.peek();
+
+
   // Determine if step is available
-  if(!tagRef[next.x][next.y].isAvailable()){
+  if (!tagRef[next.x][next.y].isAvailable()) {
     // call findPath
     findPath();
-    
-    
+
+
     // Retrieve new step
     path.pop();
     next = path.peek();
   }// end if unavailable
 
-  char targBuff[15]="roba_targ:0,0";
-  targBuff[3]=ID;
-  targBuff[10]=next.x+'0';
-  targBuff[12]=next.y+'0';
+  char targBuff[15] = "roba_targ:0,0";
+  targBuff[3] = ID;
+  targBuff[10] = next.x + '0';
+  targBuff[12] = next.y + '0';
   Serial.println(targBuff);
-  
+
 
 
   // Calculate target heading
   int xDiff = next.x - currentPos.x;
   int yDiff = next.y - currentPos.y;
   int targ_heading = -1;
-  
-  if(xDiff==0){
-    if(yDiff > 0)
+
+  if (xDiff == 0) {
+    if (yDiff > 0)
       targ_heading = 2;
-     else
+    else
       targ_heading = 0;
-  }else if(yDiff==0){
-    if(xDiff > 0)
+  } else if (yDiff == 0) {
+    if (xDiff > 0)
       targ_heading = 1;
-     else
+    else
       targ_heading = 3;
   }
- /* Serial.print(ID);
-  Serial.print("- ");
-  Serial.println(targ_heading);*/
+  /* //Serial.print(ID);
+   //Serial.print("- ");
+   //Serial.println(targ_heading);*/
   return targ_heading;
-  
+
 }
 
 /**
@@ -391,81 +381,84 @@ int nextMove() {
  * global destination.
  */
 
- 
-void printQueue(){
+
+void printQueue() {
   QueueArray<coords> temp;
-  
-  while(!temp.isEmpty()){
-    Serial.print(temp.peek().x);
-    Serial.print(", ");
-    Serial.println(temp.peek().y);
+
+  while (!temp.isEmpty()) {
+    //Serial.print(temp.peek().x);
+    //Serial.print(", ");
+    //Serial.println(temp.peek().y);
     temp.pop();
   }
-  
+
 }
 
- 
-void findPath(){
- Serial.print(ID);
- Serial.print("- ");
- 
+
+void findPath() {
+  targets.printVector();
+  
+  if (!targets.findClosest(currentPos)) {
+    quit();
+  }
+
   rfid.errorSound();
   QueueArray<coords> newPath;
   coords dest;
-  dest.x = targets.peek().x;
-  dest.y = targets.peek().y;
+  dest.x = targets.getCoords().x;
+  dest.y = targets.getCoords().y;
   coords next;
   next.x = currentPos.x;
   next.y = currentPos.y;
-  
+
   newPath.push(next);
-  
-  while(next.x!=dest.x || next.y!=dest.y){
+
+  while (next.x != dest.x || next.y != dest.y) {
 
     int x_dif = dest.x - next.x;
     int y_dif = dest.y - next.y;
     coords temp;
     temp.x = next.x;
     temp.y = next.y;
-    
-    if(abs(x_dif)>abs(y_dif)){
+
+    if (abs(x_dif) > abs(y_dif)) {
       temp.x = temp.x + signum(x_dif);
-    }else{
-      temp.y = temp.y + signum(y_dif); 
+    } else {
+      temp.y = temp.y + signum(y_dif);
     }
 
     // the first step must be available
-    if(newPath.count()==1 && !tagRef[temp.x][temp.y].isAvailable()){
-      Serial.println("Picking alternate path");
+    if (newPath.count() == 1 && !tagRef[temp.x][temp.y].isAvailable()) {
+      //Serial.println("Picking alternate path");
       temp.x = next.x;
       temp.y = next.y;
-      if(abs(x_dif)<=abs(y_dif)){
+      if (abs(x_dif) <= abs(y_dif)) {
         temp.x = next.x + signum(x_dif);
-        if(temp.x<0 || temp.x>4){// if off the board
+        if (temp.x < 0 || temp.x > 4) { // if off the board
           temp.x = next.x - signum(x_dif);
         }
-      }else{
+      } else {
         temp.y = next.y + signum(y_dif);
-        if(temp.y<0 || temp.y>4){// if off the board
+        if (temp.y < 0 || temp.y > 4) { // if off the board
           temp.y = next.y - signum(y_dif);
         }
       }
     }// end if first step unavailable
 
-    Serial.print("(");
-    Serial.print(temp.x);
-    Serial.print(",");
-    Serial.print(temp.y);
-    Serial.print(")-");
+    //Serial.print("(");
+    //Serial.print(temp.x);
+    //Serial.print(",");
+    //Serial.print(temp.y);
+    //Serial.print(")-");
     newPath.push(temp);
     next.x = temp.x;
     next.y = temp.y;
   }// end loop
 
-Serial.println();
-path = newPath;
-  
-  
+  //Serial.println();
+  path = newPath;
+
+
 }
 /*
   Takes in a target heading, turns the robot the
@@ -474,7 +467,7 @@ path = newPath;
   side effect.
 */
 void move(int targ_heading) {
-  
+
   int turn;
   // Calculate turn increment
   if (targ_heading == 0 && heading == 3)
@@ -496,18 +489,18 @@ void move(int targ_heading) {
   // Travel straight to next position
   nxshield.bank_a.motorRunUnlimited(SH_Motor_Both, SH_Direction_Forward, 20);
   delay(500);
- 
+
   while (rfid.compareTagData(tagData, tagDataBuffer)) {
     pilot.straight();
 
-    if (rfid.decodeTag(tempTagData)){
+    if (rfid.decodeTag(tempTagData)) {
       //rfid.successSound();
       rfid.transferToBuffer(tempTagData, tagData);
     }
   }
-  
+
   nxshield.bank_a.motorStop(SH_Motor_Both, SH_Next_Action_Float);
-  
+
 }
 
 /*
@@ -517,7 +510,7 @@ void move(int targ_heading) {
  response.  Multiple bytes of data may be available.
  */
 void serialEvent() {
-  
+
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
@@ -527,7 +520,7 @@ void serialEvent() {
       return;
     }
   }
-  
+
 }
 
 int signum(int val) {
@@ -542,7 +535,11 @@ int signum(int val) {
  * unit to maneuver out of the way of any approaching units.
  */
 void quit() {
-  
+
+
+  outBuff[9] = currentPos.x + '0';
+  outBuff[11] = currentPos.y + '0';
+  Serial.println(outBuff);
   Serial.print("rob");
   Serial.print(ID);
   Serial.println("_done");
@@ -551,68 +548,68 @@ void quit() {
 
   int id = -1;
   while (1) {
-    while(1){
+    while (1) {
       inputString = "";
       serialEvent();
-      id = inputString.charAt(3)-'A';
-      
+      id = inputString.charAt(3) - 'A';
+
       while (id < 0 || id > robNum) {
         inputString = "";
         serialEvent();
-        id = inputString.charAt(3)-'A';
+        id = inputString.charAt(3) - 'A';
       }// end loop
-    
-      if(inputString.charAt(5)=='p'){
-        remote_pos[id][0].x = inputString.charAt(9)-'0';
-        remote_pos[id][0].y = inputString.charAt(11)-'0';
+
+      if (inputString.charAt(5) == 'p') {
+        remote_pos[id][0].x = inputString.charAt(9) - '0';
+        remote_pos[id][0].y = inputString.charAt(11) - '0';
       }
-      else if(inputString.charAt(5)=='t'){
-        remote_pos[id][1].x = inputString.charAt(10)-'0';
-        remote_pos[id][1].y = inputString.charAt(12)-'0';
+      else if (inputString.charAt(5) == 't') {
+        remote_pos[id][1].x = inputString.charAt(10) - '0';
+        remote_pos[id][1].y = inputString.charAt(12) - '0';
         break;
       }
-   }// end inner loop
-  
-   coords remoteTarg;
-   remoteTarg.x = inputString.charAt(10)-'0';
-   remoteTarg.y = inputString.charAt(12)-'0';
-   coords remotePos;
-   remotePos.x= remote_pos[id][0].x;
-   remotePos.y= remote_pos[id][0].y;
-   
-   int xdif = abs(remoteTarg.x-currentPos.x);
-   int ydif = abs(remoteTarg.y-currentPos.y);
-   
-   if( (xdif<=1 && ydif==0) || (ydif<=1 && xdif==0) ){
+    }// end inner loop
+
+    coords remoteTarg;
+    remoteTarg.x = inputString.charAt(10) - '0';
+    remoteTarg.y = inputString.charAt(12) - '0';
+    coords remotePos;
+    remotePos.x = remote_pos[id][0].x;
+    remotePos.y = remote_pos[id][0].y;
+
+    int xdif = abs(remoteTarg.x - currentPos.x);
+    int ydif = abs(remoteTarg.y - currentPos.y);
+
+    if ( (xdif <= 1 && ydif == 0) || (ydif <= 1 && xdif == 0) ) {
       int targHeading = 10;
-      
+
       for (int i = 0; i < 4; i++) {
-          int x = currentPos.x + (i % 2) * (2 - i);
-          int y = currentPos.y + ((i + 1) % 2) * ((i + 1) - 2);
-      
-          // if off the board
-          if (x < 0 || x > 4 || y < 0 || y > 4){
-            continue;
-          }else if(x==remoteTarg.x && y==remoteTarg.y){
-            continue;
-          }else{
-            targHeading = i;
-            break;
-          }
-       }
+        int x = currentPos.x + (i % 2) * (2 - i);
+        int y = currentPos.y + ((i + 1) % 2) * ((i + 1) - 2);
 
-       move(targHeading);
-       rfid.transferToBuffer(tagData, tagDataBuffer);
+        // if off the board
+        if (x < 0 || x > 4 || y < 0 || y > 4) {
+          continue;
+        } else if (x == remoteTarg.x && y == remoteTarg.y) {
+          continue;
+        } else {
+          targHeading = i;
+          break;
+        }
+      }
 
-       // update heading
-       heading = targHeading;
-      
-       //ID new location
-       get_pos();
-          
+      move(targHeading);
+      rfid.transferToBuffer(tagData, tagDataBuffer);
+
+      // update heading
+      heading = targHeading;
+
+      //ID new location
+      get_pos();
+
     }// end if target equals position
 
     Serial.println(targBuff);
   }// end loop
-  
+
 }

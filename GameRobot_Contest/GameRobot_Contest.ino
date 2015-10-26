@@ -1,4 +1,5 @@
 // Authors: Ed Baker, Alex Henderson, Jake Maynard
+//This is the array one!
 #include <QueueArray.h>
 
 #include <NXShield.h>
@@ -30,11 +31,12 @@ coords operator=(const coords& o){
 
 
 
-const char ID =  'A';             // Unique id for each robot
+const char ID =  'B';             // Unique id for each robot
 coords remote_pos[2][2];          // Initialize to number of robots in system
                                   // Holds current pos at the top and target pos at the bottom
-coords targets [9];               // Destinations, in order, of the robot
 int tIndex = 0;                    // Index of current target
+coords targets [9];               // Destinations, in order, of the robot
+
 QueueArray<coords> path;          // Current path of the robot
 int robNum = 2;                   // Number of robots
 String inputString = "";          // used for xbee recieve
@@ -59,7 +61,31 @@ bool arrayEmpty();
 int findClosest();
 void checkOppPos();
 int signum(int val);
+void report(String o);
 
+
+
+void report(String o){
+  char buffer[100];
+    buffer[0]=ID;
+    int i=1;
+    
+    
+    while( i <= o.length() ){
+    if(i==99){break;}
+    buffer[i]=o.charAt(i-1);
+    i++;
+    }
+  
+  buffer[i]=tIndex+'0';
+  i++;
+  
+   
+  buffer[i]= '\n';
+  
+  Serial.print(buffer);
+  
+}
 
 
 void setup() {
@@ -121,7 +147,9 @@ for(int x=0;x<2;x++){
 }
 
 void loop() {
-    Serial.print(ID);
+
+  /*
+  Serial.print(ID);
     Serial.print("- ");
     Serial.print(tIndex);
     Serial.print(" : ");
@@ -129,6 +157,9 @@ void loop() {
     Serial.print(", ");
     Serial.print(targets[tIndex].y);
     Serial.println(" -Called from loop()");
+ */ 
+  
+  report(" Top of loop(): ");
   
   // if on current destination
   if(!arrayEmpty() && currentPos.x==targets[tIndex].x && currentPos.y==targets[tIndex].y){
@@ -139,9 +170,11 @@ void loop() {
         findPath();
       }
   }
+  
   if(arrayEmpty())
     quit();
   
+  report(" After that if in loop: ");
   
   outBuff[9] = currentPos.x + '0';
   outBuff[11] = currentPos.y + '0';
@@ -184,6 +217,7 @@ void loop() {
   //ID new location
   get_pos();
 
+report(" End of loop(): ");
 }
 
 // initialize the map with tag IDs
@@ -250,6 +284,8 @@ targets[8].y=5;
 
 bool parseInput() {
   
+  report(" Top of parseInput(): ");
+  
   int index = inputString.indexOf('_') + 1;
   if(index==0)
     return false;
@@ -267,11 +303,13 @@ bool parseInput() {
       return false;
     int posY = inputString.substring(a + 1, b).toInt();
     // Adjust availablilty
-    tagRef[remote_pos[inputString.charAt(index)-'0'][0].x][remote_pos[inputString.charAt(index)-'0'][0].y].setAvailable(true);
-    tagRef[posX][posY].setAvailable(false);
-    remote_pos[inputString.charAt(index) - '0'][0].x = posX;
-    remote_pos[inputString.charAt(index) - '0'][0].y = posY;
-   
+    
+    if(posX!=5&&posY!=5){
+      tagRef[remote_pos[inputString.charAt(index)-'0'][0].x][remote_pos[inputString.charAt(index)-'0'][0].y].setAvailable(true);
+      tagRef[posX][posY].setAvailable(false);
+      remote_pos[inputString.charAt(index) - '0'][0].x = posX;
+      remote_pos[inputString.charAt(index) - '0'][0].y = posY;
+    }
     a = b;
     b = inputString.indexOf(',', a);
     if(b<0)
@@ -285,18 +323,20 @@ bool parseInput() {
     b = inputString.indexOf('_', a);
     if(b<0)
       return false;
-     int targY = inputString.substring(a + 1, b).toInt(); 
+    int targY = inputString.substring(a + 1, b).toInt(); 
   
-    tagRef[remote_pos[inputString.charAt(index)-'0'][1].x][remote_pos[inputString.charAt(index)-'0'][1].y].setAvailable(true);
-    tagRef[targX][targY].setAvailable(false);
-    
-    remote_pos[inputString.charAt(index) - '0'][1].x = targX;
-    remote_pos[inputString.charAt(index) - '0'][1].y = targY;
-   
+  
+    if(targX!=5&&targY!=5){
+      tagRef[remote_pos[inputString.charAt(index)-'0'][1].x][remote_pos[inputString.charAt(index)-'0'][1].y].setAvailable(true);
+      tagRef[targX][targY].setAvailable(false);
+      remote_pos[inputString.charAt(index) - '0'][1].x = targX;
+      remote_pos[inputString.charAt(index) - '0'][1].y = targY;
+    }
     index = b + 1;
   }
 
-  printArray();
+  report(" Bottom of parseInput(): ");
+
   return true;
   
 }
@@ -330,6 +370,8 @@ void get_pos() {
  * whether the robot should move or reevaluate its path.
  */
 int nextMove() {
+  report(" Top of nextMove(): ");
+  
   // if a tag was skipped
   
   /*Serial.print(currentPos.x);
@@ -345,6 +387,7 @@ int nextMove() {
   
   if(currentPos.x!=path.peek().x || currentPos.y!=path.peek().y){
     Serial.println("Error: off path");
+    report(" The error 'if' in nextMove(): ");
     findPath();
   }else{
     path.pop();
@@ -372,7 +415,7 @@ int nextMove() {
   targBuff[12]=next.y+'0';
   Serial.println(targBuff);
   
-
+  report(" Right under targBuff in nextmMove(): ");
 
   // Calculate target heading
   int xDiff = next.x - currentPos.x;
@@ -390,9 +433,9 @@ int nextMove() {
      else
       targ_heading = 3;
   }
- /* Serial.print(ID);
+/*  Serial.print(ID);
   Serial.print("- ");
-  Serial.println(targ_heading);*/
+  Serial.println(tIndex);*/
   return targ_heading;
   
 }
@@ -403,13 +446,15 @@ int nextMove() {
  */
  
 void findPath(){
- Serial.print(ID);
+ /*Serial.print(ID);
  Serial.print("- ");
+ */
  
+ report(" Top of findPath(): ");
   // Find closest target
   tIndex = findClosest();
-  Serial.print("The tIndex in findPath() is: ");
-  Serial.println(tIndex);
+  /*Serial.print("The tIndex in findPath() is: ");
+  Serial.println(tIndex);*/
   
   if(tIndex == -1)//empty array
     quit();
@@ -456,21 +501,22 @@ void findPath(){
         }
       }
     }// end if first step unavailable
-
+/*
     Serial.print("(");
     Serial.print(temp.x);
     Serial.print(",");
     Serial.print(temp.y);
     Serial.print(")-");
+    */
     newPath.push(temp);
     next.x = temp.x;
     next.y = temp.y;
   }// end loop
 
-Serial.println();
+//Serial.println();
 path = newPath;
   
-  
+  report(" End of findPath(): ");
 }
 /*
   Takes in a target heading, turns the robot the
@@ -623,12 +669,14 @@ void quit() {
 
 
 bool arrayEmpty(){
+  
   //Dummy value is 5,5
   for(int i=0; i<9; i++ ){
     if(targets[i].x!=5||targets[i].y!=5){
        return false;
     }
   }
+  report(" Bottom of arrayEmpty(): ");
   return true;
 }
 
@@ -636,7 +684,7 @@ void checkOppPos(){
   int index=-1;
   for(int i=0; i<robNum;i++){
    if(i==ID-'A'){continue;}
-    for(int j=0; j<9; j++){
+    for(int j=0; j<6; j++){
         if(remote_pos[i][0].x==targets[j].x && remote_pos[i][0].y==targets[j].y){
             index=j;
             break;
@@ -658,7 +706,7 @@ void checkOppPos(){
 int findClosest(){
   float closest=25;
   int index=-1;
-  for(int i=0; i<9; i++){
+  for(int i=0; i<6; i++){
     if(targets[i].x==5&&targets[i].y==5){continue;}
     float distance = sqrt(sq(currentPos.x-targets[i].x) + sq(currentPos.y-targets[i].y));
     
@@ -669,8 +717,8 @@ int findClosest(){
 
   }
   
-  Serial.print("findclosest() says this is a valid number: ");
-  Serial.println(index);
+ // Serial.print("findclosest() says this is a valid number: ");
+  //Serial.println(index);
+  report(" bottom of findClosest(): ");
   return index;
 }
-
