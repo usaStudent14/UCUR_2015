@@ -9,6 +9,8 @@
 #include <strsafe.h>
 #include <mutex>
 #include <thread>
+#include <vector>
+#include <stdlib.h>
 #include "SerialClass.h"	// Library described above
 #include "Robot.h"
 
@@ -20,7 +22,6 @@ Serial* SP; // Serial connection
 queue<string, list<string>> msgQ;
 bool systemFin;
 mutex foobar;
-
 
 void messageRead();
 
@@ -67,13 +68,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	}// end loop
 	reply[rchar++] = '\n';
 
+	cout << "System ready...\n";
+
+	//BEGIN-----------------------------------
 	while(doneCount < ROBCOUNT && SP->IsConnected())
 	{	
 		//Sleep(10);
 		string datastr = "";
 
 		if(!msgQ.empty()){
-		
 			cout << msgQ.front() << endl;
 			
 			foobar.lock();
@@ -84,7 +87,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			if(datastr.find("rob")!=string::npos){
 				char idChar = datastr.at(3);
 				int id = idChar - 'A';
-
+				if(id > ROBCOUNT || id < 0)
+					continue;
 
 				// If position report
 				if(datastr.find("pos")!=string::npos){
@@ -116,16 +120,19 @@ int _tmain(int argc, _TCHAR* argv[])
 					}// end loop
 
 					SP->WriteData(reply, rchar);
+
 					// If target position report
 				}else if(datastr.find("targ")!=string::npos){
+					/*
 					if(synchCount<ROBCOUNT){
 						if(callID!= id){
 							synchCount++;
 							callID = id;
 						}
+						*/
 						// store  data
 						robs[id].setTarg(datastr.at(10)-'0', datastr.at(12)-'0');
-					}
+					/*}
 					else{
 						char permiss[7] = "sysa*\n";
 						// Compare robot's target positions
@@ -152,14 +159,13 @@ int _tmain(int argc, _TCHAR* argv[])
 							}
 						}
 						synchCount = 0;
-					}
+						*/
+					//}
 
 					// If completion report
 				}else if(datastr.find("done")!=string::npos){
 					// Evaluate system completion
 					doneCount++;
-					Robot replacement;
-					robs[id] = replacement;
 				}
 
 			}// end if starting with "rob"
@@ -167,13 +173,44 @@ int _tmain(int argc, _TCHAR* argv[])
 		}// end if complete message
 
 	}// end loop
+	//END------------------------------------------
 
 	systemFin = true;
+
+	cout << "\nProcess Complete";
 
 	getchar();
 	child.join();
 	return 0;
 }
+
+void buildTargList(vector<coords> &targets){
+	srand (time(NULL));
+	//# of targets hardcoded to 3 for testing
+	for(int i = 0; i < 3; i++){
+		//random x
+		int newx = rand()%5;
+		//random y
+		int newy = rand()%5;
+		// check for dupes
+		int tempi = i;
+		for(int v=0;v<targets.size();v++){
+			if(newx==targets.at(v).x && newy==targets.at(v).y){
+				tempi--;
+			}
+		}//end inner loop
+		if(i==tempi){
+			coords newTarg;
+			newTarg.x=newx;
+			newTarg.y=newy;
+			targets.push_back(newTarg);
+		}else{
+			i=tempi;
+		}
+	}// end loop
+
+}
+
 
 void messageRead(){
 	
@@ -182,7 +219,6 @@ void messageRead(){
 
 
 	while (!systemFin){
-		//cout << msgQ.size() << endl;
 		SP->ReadData(inT, 1);
 
 		if (inT[0] != '\n'){
