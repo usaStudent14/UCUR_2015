@@ -87,13 +87,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		// Robots handle duplicates
 		SP->WriteData(targ, 4);
 		Sleep(10);
-		SP->WriteData(targ, 4);
-		Sleep(10);
-		SP->WriteData(targ, 4);
-		Sleep(10);
-		SP->WriteData(targ, 4);
-		Sleep(10);
-		SP->WriteData(targ, 4);
+		//SP->WriteData(targ, 4);
+		//Sleep(10);
+		//SP->WriteData(targ, 4);
 		//print to screen
 		cout << T.x << ", " << T.y << endl;
 	}
@@ -216,6 +212,16 @@ int _tmain(int argc, _TCHAR* argv[])
 	//END------------------------------------------
 
 	systemFin = true;
+
+	//Determine winner
+	int winIndex=0;
+	int max=0;
+	for(int r = 0; r < ROBCOUNT;r++){
+		cout << "Robot " << r+'A' << " score:" << robs[r].getScore()<< endl;
+		if(robs[r].getScore() > max)
+			winIndex=r;
+	}
+	cout << "Winner is Robot " << winIndex<<"!\n\n";
 
 	cout << "\nProcess Complete";
 

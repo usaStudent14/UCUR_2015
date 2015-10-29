@@ -26,6 +26,7 @@ public:
 	void setTarg(int x, int y);
 	coords getPos();
 	coords getTarg();
+	int getScore();
 	bool compareTarg(coords rTarg);
 	void incrementMoves();
 	void incrementScore();

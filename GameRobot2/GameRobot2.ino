@@ -350,7 +350,8 @@ int nextMove() {
 
  
 void printQueue(){
-  QueueArray<coords> temp= path;
+  QueueArray<coords> temp;
+  temp = path;
   while(!temp.isEmpty()){
     Serial.print(temp.peek().x);
     Serial.print(", ");
@@ -391,7 +392,8 @@ void findPath(){
     // the first step must be available
     if(newPath.isEmpty() && !tagRef[temp.x][temp.y].isAvailable()){
       Serial.println("Picking alternate path");
-      temp = next;
+      temp.x = next.x;
+      temp.y = next.y;
       if(abs(x_dif)<abs(y_dif)){
         temp.x = next.x + signum(x_dif);
         if(temp.x<0 || temp.x>4){// if off the board
