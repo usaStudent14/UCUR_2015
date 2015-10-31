@@ -22,28 +22,25 @@ Serial* SP; // Serial connection
 queue<string, list<string>> msgQ;
 bool systemFin;
 mutex foobar;
+#define ROBCOUNT 2 //Hardcode to number of bots
 
-void buildTargList(vector<coords> &targets);
+void init(Robot * robs);
+void coopAlg(Robot * robs, vector<coords> targs);
 void messageRead();
 
 // application reads from the specified serial port and reports the collected data
 int _tmain(int argc, _TCHAR* argv[])
 {
-	const int ROBCOUNT = 2; //Hardcode to number of bots
-	Robot robs[ROBCOUNT];// Hardcode to number of bots
-	systemFin = false;
-
-	SP = new Serial("COM5");    // adjust as needed
-	if (SP->IsConnected())
-		printf("System channel up...\n");
-
-	// Create a thread
-	thread child(messageRead);
-
-
 	int doneCount = 0;// number of robots that have completed the game
 	int synchCount = 0;// number of robots waiting to synch target data
 	int callID = -1;
+	Robot robs[ROBCOUNT];// Hardcode to number of bots
+	systemFin = false;
+	SP = new Serial("COM5");    // adjust as needed
+	if (SP->IsConnected())
+		printf("System channel up...\n");
+	// Create a thread
+	thread child(messageRead);
 
 	//Format: "sys<recipientID>rp_<remoteID>:0,0(current pos):0,0(target pos)_<remoteID>..._\n"
 	char reply[100];
@@ -69,34 +66,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	}// end loop
 	reply[rchar++] = '\n';
 
-	// Generate random list of targets
-	vector<coords> targets;
-	buildTargList(targets);
-	/*Send list to bots-
-	* Message protocol: coords sent as #,# multiple	
-	* times to increase chance of good message, then
-	* single character 'd' sent to indicate end
-	*/
-	getchar();
-	cout << "Broadcasting Targets...\n";
-
-	char targ[5] = "#,#\n";
-	for(coords T : targets){
-		targ[0] = T.x + '0';
-		targ[2] = T.y + '0';
-		// Robots handle duplicates
-		SP->WriteData(targ, 4);
-		Sleep(10);
-		//print to screen
-		cout << T.x << ", " << T.y << endl;
-	}
-
-	getchar();
-	SP->WriteData("d\n", 2);
-
+	init(robs);
 	cout << "System ready...\n";
 
-	
+
 
 	//BEGIN-----------------------------------
 	while(doneCount < ROBCOUNT && SP->IsConnected())
@@ -106,7 +79,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		if(!msgQ.empty()){
 			cout << msgQ.front() << endl;
-			
+
 			foobar.lock();
 			datastr = msgQ.front();
 			msgQ.pop();
@@ -149,53 +122,53 @@ int _tmain(int argc, _TCHAR* argv[])
 
 					SP->WriteData(reply, rchar);
 
-					//Handle reached targets
+					/*Handle reached targets
 					for(int t=0;t<targets.size();t++){
-						if(targets.at(t).x==tempPos.x && targets.at(t).y==tempPos.y){
-							robs[id].incrementScore();
-							targets.erase(targets.begin()+t);
-						}
+					if(targets.at(t).x==tempPos.x && targets.at(t).y==tempPos.y){
+					robs[id].incrementScore();
+					targets.erase(targets.begin()+t);
 					}
+					}*/
 
 					// If target position report
 				}else if(datastr.find("targ")!=string::npos){
 					/*
 					if(synchCount<ROBCOUNT){
-						if(callID!= id){
-							synchCount++;
-							callID = id;
-						}
-						*/
-						// store  data
-						robs[id].setTarg(datastr.at(10)-'0', datastr.at(12)-'0');
+					if(callID!= id){
+					synchCount++;
+					callID = id;
+					}
+					*/
+					// store  data
+					robs[id].setTarg(datastr.at(10)-'0', datastr.at(12)-'0');
 					/*}
 					else{
-						char permiss[7] = "sysa*\n";
-						// Compare robot's target positions
-						int goID = -1;
-						for(int a = 0; a < ROBCOUNT-1; a++){
-							for(int b = a + 1; b < ROBCOUNT; b++){
-								if(robs[a].compareTarg(robs[b].getTarg())){
-									if(robs[a].getMoves() > robs[b].getMoves())
-										goID = a;
-									else
-										goID = b;
-								}
-							}
-						}// end loop
+					char permiss[7] = "sysa*\n";
+					// Compare robot's target positions
+					int goID = -1;
+					for(int a = 0; a < ROBCOUNT-1; a++){
+					for(int b = a + 1; b < ROBCOUNT; b++){
+					if(robs[a].compareTarg(robs[b].getTarg())){
+					if(robs[a].getMoves() > robs[b].getMoves())
+					goID = a;
+					else
+					goID = b;
+					}
+					}
+					}// end loop
 
-						if(goID >= 0){
-							permiss[3] = goID+'A';
-							SP->WriteData(permiss, 6);
-						}
-						else{
-							for(int i = 0; i < ROBCOUNT; i++){
-								permiss[3] = i + 'A';
-								SP->WriteData(permiss, 6);
-							}
-						}
-						synchCount = 0;
-						*/
+					if(goID >= 0){
+					permiss[3] = goID+'A';
+					SP->WriteData(permiss, 6);
+					}
+					else{
+					for(int i = 0; i < ROBCOUNT; i++){
+					permiss[3] = i + 'A';
+					SP->WriteData(permiss, 6);
+					}
+					}
+					synchCount = 0;
+					*/
 					//}
 
 					// If completion report
@@ -213,18 +186,6 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	systemFin = true;
 
-	//Determine winner
-	int winIndex=0;
-	int max=0;
-	for(int r = 0; r < ROBCOUNT;r++){
-		char printID = r +'A';
-		cout << "Robot " << printID << " score:" << robs[r].getScore()<< endl;
-		if(robs[r].getScore() > max)
-			winIndex=r;
-	}
-	char printID = winIndex +'A';
-	cout << "Winner is Robot " << printID<<"!\n\n";
-
 	cout << "\nProcess Complete";
 
 	getchar();
@@ -232,36 +193,96 @@ int _tmain(int argc, _TCHAR* argv[])
 	return 0;
 }
 
-void buildTargList(vector<coords> &targets){
-	srand (time(NULL));
-	//# of targets hardcoded to 3 for testing
-	for(int i = 0; i < 3; i++){
-		//random x
-		int newx = rand()%5;
-		//random y
-		int newy = rand()%5;
-		// check for dupes
-		int tempi = i;
-		for(int v=0;v<targets.size();v++){
-			if(newx==targets.at(v).x && newy==targets.at(v).y){
-				tempi--;
+void init(Robot * robs){
+
+	//initial position read loop
+	int readcount = 0;
+	while(readcount < ROBCOUNT){
+		string datastr = "";
+
+		if(msgQ.empty())
+			continue;
+
+		cout << msgQ.front() << endl;
+
+		foobar.lock();
+		datastr = msgQ.front();
+		msgQ.pop();
+		foobar.unlock();
+
+		if(datastr.find("rob")!=string::npos){
+			char idChar = datastr.at(3);
+			int id = idChar - 'A';
+			if(id > ROBCOUNT || id < 0)
+				continue;
+
+			// If position report
+			if(datastr.find("pos")!=string::npos){
+				coords tempPos;
+				tempPos.x = datastr.at(9)-'0';
+				tempPos.y = datastr.at(11)-'0';
+
+				//Store data
+				robs[id].setPos(tempPos.x, tempPos.y);
+				robs[id].incrementMoves();
+				readcount++;
 			}
-		}//end inner loop
-		if(i==tempi){
-			coords newTarg;
-			newTarg.x=newx;
-			newTarg.y=newy;
-			targets.push_back(newTarg);
-		}else{
-			i=tempi;
 		}
-	}// end loop
+	}// end init read loop
+
+	// Hardcode targets for now
+	vector<coords> globalTargs;
+	coords temptarg;
+	temptarg.x=4;
+	temptarg.y=2;
+	globalTargs.push_back(temptarg);
+	temptarg.x=2;
+	temptarg.y=3;
+	globalTargs.push_back(temptarg);
+	temptarg.x=0;
+	temptarg.y=4;
+	globalTargs.push_back(temptarg);
+	temptarg.x=3;
+	temptarg.y=3;
+	globalTargs.push_back(temptarg);
+
+	// call pathing algorithm
+	coopAlg(robs, globalTargs);
+
+	/*Send lists to bots-
+	* Message protocol: coords sent as ID:#,# multiple	
+	* times to increase chance of good message, then
+	* single character 'd' sent to indicate end
+	*/
+	getchar();
+	cout << "Broadcasting Targets...\n";
+
+	char targ[7] = "a:#,#\n";
+	//for each bot
+	for(int r=0; r < ROBCOUNT; r++){
+		targ[0] = r + 'A';
+		for(size_t sr=0; sr< robs[r].targets.size(); sr++){	
+			targ[2] = robs[r].targets[sr].x + '0';
+			targ[4] = robs[r].targets[sr].y + '0';
+			SP->WriteData(targ, 6);
+			cout << targ[2] << "," << targ[4] << endl;
+			Sleep(10);
+		}
+	}
+
+	getchar();
+	SP->WriteData("d\n", 2);
+
+
+}// end alg
+
+
+void coopAlg(Robot * robs, vector<coords> targs){
 
 }
 
-
 void messageRead(){
-	
+
 	char inT[2];
 	string messageT = "";
 
@@ -270,14 +291,14 @@ void messageRead(){
 		SP->ReadData(inT, 1);
 
 		if (inT[0] != '\n'){
-			
+
 			if(messageT.empty() && inT[0] > 0){
-					messageT += inT[0];
+				messageT += inT[0];
 			}
 			if(!messageT.empty()){
 
 				if(inT[0] != messageT.back() && inT[0] > 0){
-						messageT += inT[0];
+					messageT += inT[0];
 				}
 			}
 		}else{
