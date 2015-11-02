@@ -26,6 +26,7 @@ mutex foobar;
 
 void init(Robot * robs);
 void coopAlg(Robot * robs, vector<coords> targs);
+int closest(coords currentPos, vector<coords> targs, Robot &rob);
 void messageRead();
 
 // application reads from the specified serial port and reports the collected data
@@ -261,6 +262,7 @@ void init(Robot * robs){
 	//for each bot
 	for(int r=0; r < ROBCOUNT; r++){
 		targ[0] = r + 'A';
+		cout << targ[0] << ":\n";
 		for(size_t sr=0; sr< robs[r].targets.size(); sr++){	
 			targ[2] = robs[r].targets[sr].x + '0';
 			targ[4] = robs[r].targets[sr].y + '0';
@@ -274,11 +276,91 @@ void init(Robot * robs){
 	SP->WriteData("d\n", 2);
 
 
-}// end alg
+}// end init
 
 
 void coopAlg(Robot * robs, vector<coords> targs){
+	vector<coords> temp;
+	double maxSum = 0;
 
+	// loop to calculate maximum distances robots could travel
+	for (int r1 = 0; r1 < ROBCOUNT; r1++) {
+		temp = targs;// copy of target list
+		coords pos;
+		pos.x = robs[r1].getPos().x;
+		pos.y = robs[r1].getPos().y;
+		cout << r1 << ":\n";
+		while (!temp.empty()) {
+			int index = closest(pos, temp, robs[r1]);
+			pos.x = temp[index].x;
+			pos.y = temp[index].y;
+			temp.erase(temp.begin() + index);
+		}
+		maxSum += robs[r1].maxDistance;// sum all max distances
+	}// end loop
+
+	int starter = 0;
+	int maxDis = 0;
+	for (int r2 = 0; r2 < ROBCOUNT; r2++) {
+		if (robs[r2].maxDistance > maxDis) {
+			starter = r2;
+			maxDis = robs[r2].maxDistance;
+		}
+	}// end second loop
+
+	int moves = ceil(maxSum/pow((double)ROBCOUNT,2));
+	
+	// FOLLOWING SOLUTION IS NOT SCALEABLE--------
+
+	// make target list for first robot
+	temp.clear();
+	coords pos;
+	pos.x = robs[starter].getPos().x;
+	pos.y = robs[starter].getPos().y;
+	for (int i = 0; i < robs[starter].targets.size(); i++) {
+		int distance = abs(pos.x - robs[starter].targets[i].x) + abs(pos.y - robs[starter].targets[i].y);
+		if (distance <= moves) {
+			temp.push_back(robs[starter].targets[i]);
+			moves -= distance;
+			pos.x = robs[starter].targets[i].x;
+			pos.y = robs[starter].targets[i].y;
+		}
+		else {
+			//robs[starter].targets = temp;
+			//break;
+		}
+	}// end third loop
+
+	robs[starter].targets = temp;
+
+	for (int r4 = 0; r4 < ROBCOUNT; r4++) {// for each bot
+		if (r4 != starter) {// except the first one
+			for (int t = robs[r4].targets.size() - 1; t >= 0; t--) {// for each of its targets
+				for (int s = 0; s < robs[starter].targets.size(); s++) {// for each of the first's targets
+					if (robs[r4].targets[t].x == robs[starter].targets[s].x 
+						&& robs[r4].targets[t].y == robs[starter].targets[s].y) // if match
+					{
+						robs[r4].targets.erase(robs[r4].targets.begin() + t);// erase from targets
+					}
+				}
+			}
+		}
+	}// end fourth loop
+}
+
+int closest(coords currentPos, vector<coords> targs, Robot &rob) {
+	int minDis = 10;
+	int index = 0;
+	for (int i = 0; i < targs.size(); i++) {
+		int distance = abs(currentPos.x - targs[i].x) + abs(currentPos.y - targs[i].y);
+		if (distance < minDis) {
+			minDis = distance;
+			index = i;
+		}
+	}
+	rob.targets.push_back(targs[index]);
+	rob.maxDistance += minDis;
+	return index;
 }
 
 void messageRead(){

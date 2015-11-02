@@ -15,6 +15,7 @@ private:
 	
 public:
 	std::vector<coords> targets;
+	int maxDistance;
 
 	Robot(){
 		moves = 0;
@@ -22,6 +23,7 @@ public:
 		currentPos.y = 5;
 		targ.x = 5;
 		targ.y = 5;
+		maxDistance = 0;
 	}
 	void setPos(int x, int y);
 	void setTarg(int x, int y);
