@@ -53,7 +53,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	reply[5] = 'p';
 	reply[6] = '_';
 	int rchar = 7;
-	for(int i = 0; i < ROBCOUNT - 1; i++){
+	for (int i = 0; i < ROBCOUNT - 1; i++) {
 		reply[rchar++] = 'a';
 		reply[rchar++] = ':';
 		reply[rchar++] = '5';
@@ -73,12 +73,12 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 	//BEGIN-----------------------------------
-	while(doneCount < ROBCOUNT && SP->IsConnected())
-	{	
-		//Sleep(10);
+	while (doneCount < ROBCOUNT && SP->IsConnected())
+	{
+		Sleep(50);
 		string datastr = "";
 
-		if(!msgQ.empty()){
+		if (!msgQ.empty()) {
 			cout << msgQ.front() << endl;
 
 			foobar.lock();
@@ -86,20 +86,20 @@ int _tmain(int argc, _TCHAR* argv[])
 			msgQ.pop();
 			foobar.unlock();
 
-			if(datastr.find("rob")!=string::npos){
+			if (datastr.find("rob") != string::npos) {
 				char idChar = datastr.at(3);
 				int id = idChar - 'A';
-				if(id > ROBCOUNT || id < 0)
+				if (id > ROBCOUNT || id < 0)
 					continue;
 
 				// If position report
-				if(datastr.find("pos")!=string::npos){
+				if (datastr.find("pos") != string::npos) {
 					coords tempPos;
-					tempPos.x = datastr.at(9)-'0';
-					tempPos.y = datastr.at(11)-'0';
+					tempPos.x = datastr.at(9) - '0';
+					tempPos.y = datastr.at(11) - '0';
 
 					// if not a duplicate
-					if(tempPos.x!=robs[id].getPos().x || tempPos.y!=robs[id].getPos().y){
+					if (tempPos.x != robs[id].getPos().x || tempPos.y != robs[id].getPos().y) {
 						//Store data
 						robs[id].setPos(tempPos.x, tempPos.y);
 						robs[id].incrementMoves();
@@ -109,13 +109,13 @@ int _tmain(int argc, _TCHAR* argv[])
 					reply[3] = id + 'A';
 
 					int ctr = 7;
-					for(int i = 0; i < ROBCOUNT; i++){
-						if(i != id){
+					for (int i = 0; i < ROBCOUNT; i++) {
+						if (i != id) {
 							reply[ctr] = i + '0';
-							reply[ctr+2] = robs[i].getPos().x + '0';
-							reply[ctr+4] = robs[i].getPos().y + '0';
-							reply[ctr+6] = robs[i].getTarg().x + '0';
-							reply[ctr+8] = robs[i].getTarg().y + '0';
+							reply[ctr + 2] = robs[i].getPos().x + '0';
+							reply[ctr + 4] = robs[i].getPos().y + '0';
+							reply[ctr + 6] = robs[i].getTarg().x + '0';
+							reply[ctr + 8] = robs[i].getTarg().y + '0';
 
 							ctr += 10;
 						}
@@ -123,57 +123,51 @@ int _tmain(int argc, _TCHAR* argv[])
 
 					SP->WriteData(reply, rchar);
 
-					/*Handle reached targets
-					for(int t=0;t<targets.size();t++){
-					if(targets.at(t).x==tempPos.x && targets.at(t).y==tempPos.y){
-					robs[id].incrementScore();
-					targets.erase(targets.begin()+t);
-					}
-					}*/
-
 					// If target position report
-				}else if(datastr.find("targ")!=string::npos){
-					/*
-					if(synchCount<ROBCOUNT){
-					if(callID!= id){
-					synchCount++;
-					callID = id;
-					}
-					*/
-					// store  data
-					robs[id].setTarg(datastr.at(10)-'0', datastr.at(12)-'0');
-					/*}
-					else{
-					char permiss[7] = "sysa*\n";
-					// Compare robot's target positions
-					int goID = -1;
-					for(int a = 0; a < ROBCOUNT-1; a++){
-					for(int b = a + 1; b < ROBCOUNT; b++){
-					if(robs[a].compareTarg(robs[b].getTarg())){
-					if(robs[a].getMoves() > robs[b].getMoves())
-					goID = a;
-					else
-					goID = b;
-					}
-					}
-					}// end loop
+				}
+				else if (datastr.find("targ") != string::npos) {
 
-					if(goID >= 0){
-					permiss[3] = goID+'A';
-					SP->WriteData(permiss, 6);
+					if (synchCount < ROBCOUNT) {
+						if (callID != id) {
+							synchCount++;
+							callID = id;
+						}
+
+						// store  data
+						robs[id].setTarg(datastr.at(10) - '0', datastr.at(12) - '0');
 					}
-					else{
-					for(int i = 0; i < ROBCOUNT; i++){
-					permiss[3] = i + 'A';
-					SP->WriteData(permiss, 6);
+					else {
+						char permiss[7] = "sysa*\n";
+						// Compare robot's target positions
+						int goID = -1;
+						for (int a = 0; a < ROBCOUNT - 1; a++) {
+							for (int b = a + 1; b < ROBCOUNT; b++) {
+								if (robs[a].compareTarg(robs[b].getTarg())) {
+									if (robs[a].getMoves() > robs[b].getMoves())
+										goID = a;
+									else
+										goID = b;
+								}
+							}
+						}// end loop
+
+						if (goID >= 0) {
+							permiss[3] = goID + 'A';
+							SP->WriteData(permiss, 6);
+						}
+						else {
+							for (int i = 0; i < ROBCOUNT; i++) {
+								permiss[3] = i + 'A';
+								SP->WriteData(permiss, 6);
+							}
+						}
+						synchCount = 0;
+
 					}
-					}
-					synchCount = 0;
-					*/
-					//}
 
 					// If completion report
-				}else if(datastr.find("done")!=string::npos){
+				}
+				else if (datastr.find("done") != string::npos) {
 					// Evaluate system completion
 					doneCount++;
 				}
@@ -187,21 +181,25 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	systemFin = true;
 
-	cout << "\nProcess Complete";
+	cout << "\nProcess Complete\n------------------------------------------------\n";
+	for (int i = 0; i < ROBCOUNT; i++) {
+		char id = i + 'A';
+		cout << "Robot " << id << " finished in " << robs[i].getMoves() << endl;
+	}
 
 	getchar();
 	child.join();
 	return 0;
 }
 
-void init(Robot * robs){
+void init(Robot * robs) {
 
 	//initial position read loop
 	int readcount = 0;
-	while(readcount < ROBCOUNT){
+	while (readcount < ROBCOUNT) {
 		string datastr = "";
 
-		if(msgQ.empty())
+		if (msgQ.empty())
 			continue;
 
 		cout << msgQ.front() << endl;
@@ -211,17 +209,17 @@ void init(Robot * robs){
 		msgQ.pop();
 		foobar.unlock();
 
-		if(datastr.find("rob")!=string::npos){
+		if (datastr.find("rob") != string::npos) {
 			char idChar = datastr.at(3);
 			int id = idChar - 'A';
-			if(id > ROBCOUNT || id < 0)
+			if (id > ROBCOUNT || id < 0)
 				continue;
 
 			// If position report
-			if(datastr.find("pos")!=string::npos){
+			if (datastr.find("pos") != string::npos) {
 				coords tempPos;
-				tempPos.x = datastr.at(9)-'0';
-				tempPos.y = datastr.at(11)-'0';
+				tempPos.x = datastr.at(9) - '0';
+				tempPos.y = datastr.at(11) - '0';
 
 				//Store data
 				robs[id].setPos(tempPos.x, tempPos.y);
@@ -234,24 +232,24 @@ void init(Robot * robs){
 	// Hardcode targets for now
 	vector<coords> globalTargs;
 	coords temptarg;
-	temptarg.x=4;
-	temptarg.y=2;
+	temptarg.x = 4;
+	temptarg.y = 2;
 	globalTargs.push_back(temptarg);
-	temptarg.x=2;
-	temptarg.y=3;
+	temptarg.x = 2;
+	temptarg.y = 3;
 	globalTargs.push_back(temptarg);
-	temptarg.x=0;
-	temptarg.y=4;
+	temptarg.x = 0;
+	temptarg.y = 4;
 	globalTargs.push_back(temptarg);
-	temptarg.x=3;
-	temptarg.y=3;
+	temptarg.x = 3;
+	temptarg.y = 3;
 	globalTargs.push_back(temptarg);
 
 	// call pathing algorithm
 	coopAlg(robs, globalTargs);
 
 	/*Send lists to bots-
-	* Message protocol: coords sent as ID:#,# multiple	
+	* Message protocol: coords sent as ID:#,# multiple
 	* times to increase chance of good message, then
 	* single character 'd' sent to indicate end
 	*/
@@ -260,10 +258,10 @@ void init(Robot * robs){
 
 	char targ[7] = "a:#,#\n";
 	//for each bot
-	for(int r=0; r < ROBCOUNT; r++){
+	for (int r = 0; r < ROBCOUNT; r++) {
 		targ[0] = r + 'A';
 		cout << targ[0] << ":\n";
-		for(size_t sr=0; sr< robs[r].targets.size(); sr++){	
+		for (size_t sr = 0; sr < robs[r].targets.size(); sr++) {
 			targ[2] = robs[r].targets[sr].x + '0';
 			targ[4] = robs[r].targets[sr].y + '0';
 			SP->WriteData(targ, 6);
@@ -279,7 +277,7 @@ void init(Robot * robs){
 }// end init
 
 
-void coopAlg(Robot * robs, vector<coords> targs){
+void coopAlg(Robot * robs, vector<coords> targs) {
 	vector<coords> temp;
 	double maxSum = 0;
 
@@ -289,7 +287,6 @@ void coopAlg(Robot * robs, vector<coords> targs){
 		coords pos;
 		pos.x = robs[r1].getPos().x;
 		pos.y = robs[r1].getPos().y;
-		cout << r1 << ":\n";
 		while (!temp.empty()) {
 			int index = closest(pos, temp, robs[r1]);
 			pos.x = temp[index].x;
@@ -308,8 +305,8 @@ void coopAlg(Robot * robs, vector<coords> targs){
 		}
 	}// end second loop
 
-	int moves = ceil(maxSum/pow((double)ROBCOUNT,2));
-	
+	int moves = ceil(maxSum / pow((double)ROBCOUNT, 2));
+
 	// FOLLOWING SOLUTION IS NOT SCALEABLE--------
 
 	// make target list for first robot
@@ -337,7 +334,7 @@ void coopAlg(Robot * robs, vector<coords> targs){
 		if (r4 != starter) {// except the first one
 			for (int t = robs[r4].targets.size() - 1; t >= 0; t--) {// for each of its targets
 				for (int s = 0; s < robs[starter].targets.size(); s++) {// for each of the first's targets
-					if (robs[r4].targets[t].x == robs[starter].targets[s].x 
+					if (robs[r4].targets[t].x == robs[starter].targets[s].x
 						&& robs[r4].targets[t].y == robs[starter].targets[s].y) // if match
 					{
 						robs[r4].targets.erase(robs[r4].targets.begin() + t);// erase from targets
@@ -363,28 +360,29 @@ int closest(coords currentPos, vector<coords> targs, Robot &rob) {
 	return index;
 }
 
-void messageRead(){
+void messageRead() {
 
 	char inT[2];
 	string messageT = "";
 
 
-	while (!systemFin){
+	while (!systemFin) {
 		SP->ReadData(inT, 1);
 
-		if (inT[0] != '\n'){
+		if (inT[0] != '\n') {
 
-			if(messageT.empty() && inT[0] > 0){
+			if (messageT.empty() && inT[0] > 0) {
 				messageT += inT[0];
 			}
-			if(!messageT.empty()){
+			if (!messageT.empty()) {
 
-				if(inT[0] != messageT.back() && inT[0] > 0){
+				if (inT[0] != messageT.back() && inT[0] > 0) {
 					messageT += inT[0];
 				}
 			}
-		}else{
-			if (!messageT.empty()){
+		}
+		else {
+			if (!messageT.empty()) {
 				foobar.lock();
 
 				msgQ.push(messageT);
@@ -395,5 +393,5 @@ void messageRead(){
 		}
 	}// end loop
 
-	return; 
+	return;
 }
