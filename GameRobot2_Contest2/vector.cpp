@@ -20,6 +20,30 @@ vector::vector () {
 }
 
 
+//Constructor, but it takes in a coord object
+vector::vector (coords input[]) {
+  size = 0;       // set the size of vector to zero.
+  items = 0;      // set the number of items of vector to zero.
+  newtIndex = 0;
+  // allocate enough memory for the array.
+  contents = (coords *) malloc (sizeof (coords) * initialSize);
+
+  // if there is a memory allocation error.
+  if (contents == NULL) {
+    Serial.print("VECTOR: insufficient memory to initialize vector.");
+    exit(0);
+  }
+  // set the initial size of the vector.
+  size = initialSize;
+
+  for (int j = 0; j < (sizeof(input) / sizeof(coords)); j++ ) {
+    this->addCoords(input[j]);
+  }
+
+}
+
+
+
 //The Deconstructor
 vector::~vector() {
   free (contents); // deallocate the array of the vector.
@@ -35,9 +59,8 @@ vector::~vector() {
 
 coords vector::getCoords() {
   int index = newtIndex;
-
   if (index < 0 || index > (items - 1)) {
-    Serial.println(F("2VECTOR: index out of bounds"));
+    Serial.println("2VECTOR: index out of bounds");
     exit(0);
   }
   return contents[index];
@@ -46,23 +69,16 @@ coords vector::getCoords() {
 
 void vector::addCoords(coords addend) {
   // check if the vector is full.
-  if (items == size) {
-    //Serial.println('A');
-    // Serial.println(size);
-
+  if (items == size)
     // double size of array.
     resize (size * 2);
-  }
-  // store the item to the array.
-  contents[items] = addend;
-  items++;
 
-  Serial.println(items);
+  // store the item to the array.
+  contents[items++] = addend;
 }
 
 
 void vector::deleteCoords() {
-
   int index = newtIndex;
   // check if the vector is empty.
   if (index < 0 || index > (items - 1)) {
@@ -70,29 +86,22 @@ void vector::deleteCoords() {
     exit(0);
   }
   if (items == 0) {
-    Serial.println(F("3VECTOR: can't pop item from vector: vector is empty."));
+    Serial.println("3VECTOR: can't pop item from vector: vector is empty.");
     exit(0);
   }
   // decrease the items.
-  for (int iter = index; iter < items ; iter++ ) {
+  items--;
 
-    contents[iter] = contents[iter + 1];
+  for (index = index + 1; index <= items ; index++ ) {
+
+    contents[index - 1] = contents[index];
 
   }
-
-
-  items--;
 
 
   // shrink size of array if necessary.
   if (items > 0 && (items <= size / 4))
-  { //Serial.println('A');
-    //Serial.println(size);
-
     resize (size / 2);
-  }
-
-  Serial.println(items);
 
 }
 
@@ -123,9 +132,9 @@ bool vector::findClosest(coords currentPos) {
 void vector::printVector() {
   for (int k = 0; k < items ; k++) {
     Serial.print(contents[k].x);
-    Serial.print(F(", "));
+    Serial.print(", ");
     Serial.print(contents[k].y);
-    Serial.println(F(" "));
+    Serial.println(" ");
   }
 }
 
@@ -140,7 +149,7 @@ void vector::resize(int s) {
 
   // defensive issue.
   if (s <= 0) {
-    Serial.println(F("4VECTOR: error due to undesirable size for vector size."));
+    Serial.println("4VECTOR: error due to undesirable size for vector size.");
     exit(0);
   }
   // allocate enough memory for the temporary array.
@@ -148,7 +157,7 @@ void vector::resize(int s) {
 
   // if there is a memory allocation error.
   if (temp == NULL) {
-    Serial.println(F("5VECTOR: insufficient memory to initialize temporary vector."));
+    Serial.println("5VECTOR: insufficient memory to initialize temporary vector.");
     exit(0);
   }
   // copy the items from the old vector to the new one.
@@ -179,11 +188,10 @@ bool vector::checkOppPos(int robNum, char ID, coords remote_pos[2][2]) {
     for (int j = 0; j < items; j++) {
       if (remote_pos[i][0].x == contents[j].x && remote_pos[i][0].y == contents[j].y) {
 
-
+        deleteCoords(j);
         if (j == newtIndex)
           repath = true;
 
-        deleteCoords(j);
       }
     }
   }
@@ -199,42 +207,36 @@ void vector::deleteCoords(int index) {
 
   // check if the vector is empty.
   if (index < 0 || index > (items - 1)) {
-    Serial.println(F("Index is out of bounds."));
+    Serial.println("Index is out of bounds.");
     exit(0);
   }
   if (items == 0) {
-    Serial.println(F("6VECTOR: can't pop item from vector: vector is empty."));
+    Serial.println("6VECTOR: can't pop item from vector: vector is empty.");
     exit(0);
   }
   // decrease the items.
+  items--;
 
+  for (index = index + 1; index <= items ; index++ ) {
 
-  for (int iter = index; iter < items ; iter++ ) {
-
-    contents[iter] = contents[iter + 1];
+    contents[index - 1] = contents[index];
 
   }
 
-  items--;
-  if (newtIndex >= index)
-    newtIndex--;
 
   // shrink size of array if necessary.
   if (items > 0 && (items <= size / 4))
     resize (size / 2);
 
-
-  Serial.println(items);
 }
 
 
 bool vector::duplicateCheck(coords ex) {
-  for (int q = 0; q < items; q++) {
-    if (contents[q].x == ex.x && contents[q].y == ex.y ) {
-      return true;
+for(int q=0; q<items;q++){
+if(contents[q].x ==ex.x && contents[q].y==ex.y ){
+        return true;
     }
   }
   return false;
 
 }
-
