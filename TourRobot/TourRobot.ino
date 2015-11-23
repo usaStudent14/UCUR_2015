@@ -88,13 +88,13 @@ void loop() {
   outBuff[9] = currentPos.x + '0';
   outBuff[11] = currentPos.y + '0';
   bool goodString = false;
-  do{
+  do {
     inputString = "";
-  
+
     //Broadcast location
     Serial.println(outBuff);
     serialEvent();
-  
+
     int count = 1;
     while (inputString.charAt(3) != ID) {
       inputString = "";
@@ -104,11 +104,11 @@ void loop() {
       }
       count++;
     }// end loop
-  
-    if (inputString.length() > 8)
-     goodString = parseInput();
 
-  }while(!goodString);
+    if (inputString.length() > 8)
+      goodString = parseInput();
+
+  } while (!goodString);
 
   //Pick move
   int targ_heading = pickMove();
@@ -158,33 +158,33 @@ void mapInit()
 
 bool parseInput() {
   int index = inputString.indexOf('_') + 1;
-  if(index==0)
+  if (index == 0)
     return false;
-  while (inputString.charAt(index)!= '\n') {
+  while (inputString.charAt(index) != '\n') {
     int a = inputString.indexOf(':', index);
     int b = inputString.indexOf(',', a);
-    if(a<0 || b<0)
+    if (a < 0 || b < 0)
       return false;
     remote_pos[inputString.charAt(index) - '0'][0].x = inputString.substring(a + 1, b).toInt();
-   
+
     a = b;
     b = inputString.indexOf(':', a);
-    if(b<0)
+    if (b < 0)
       return false;
     remote_pos[inputString.charAt(index) - '0'][0].y = inputString.substring(a + 1, b).toInt();
-   
+
     a = b;
     b = inputString.indexOf(',', a);
-    if(b<0)
+    if (b < 0)
       return false;
     remote_pos[inputString.charAt(index) - '0'][1].x = inputString.substring(a + 1, b).toInt();
-    
+
     a = b;
     b = inputString.indexOf('_', a);
-    if(b<0)
+    if (b < 0)
       return false;
     remote_pos[inputString.charAt(index) - '0'][1].y = inputString.substring(a + 1, b).toInt();
- 
+
     index = b + 1;
   }
 
@@ -255,15 +255,15 @@ int pickMove() {
       }
     }
 
-    if(targ_heading<0){
-      for(int i = 0; i < 4; i++){
-        if(directions[i]>0){
+    if (targ_heading < 0) {
+      for (int i = 0; i < 4; i++) {
+        if (directions[i] > 0) {
           targ_heading = i;
           break;
         }
-      } 
+      }
     }// end if targ_heading still equals -1
-    
+
   }// end if targ_heading equals -1
 
   //Calculate and broadcast target position
@@ -275,13 +275,13 @@ int pickMove() {
   targBuff[3] = ID;
   targBuff[10] = targPos.x + '0';
   targBuff[12] = targPos.y + '0';
-  
-  do{
+
+  do {
     inputString = "";
     //Broadcast target
     Serial.println(targBuff);
     serialEvent();
-    
+
     int count = 1;
     while (inputString.charAt(3) != ID) {
       inputString = "";
@@ -292,8 +292,8 @@ int pickMove() {
       count++;
     }// end loop
 
-  }while(inputString[4]!='*');
-  
+  } while (inputString[4] != '*');
+
   return targ_heading;
 }
 
@@ -322,14 +322,14 @@ void assignPriority(int (&directions)[4]) {
     bool gate = false;
     for (int r = 0; r < sizeof(remote_pos) / sizeof(coords[2]); r++) {
       for (int c = 0; c < 2; c++) {
-        if (remote_pos[r][c].x == x && remote_pos[r][c].y == y){
+        if (remote_pos[r][c].x == x && remote_pos[r][c].y == y) {
           directions[i] = 0;
           gate = true;
         }
       }
     }
 
-    if(gate)
+    if (gate)
       continue;
 
     // if already visited
@@ -360,7 +360,7 @@ coords nearestUnvisited(coords pos) {
       if (!tagRef[x][y].isVisited()) {
         // Check if distance is smaller than current dest
         int dist = sqrt(sq(currentPos.x - x) + sq(currentPos.y - y));
-        if(dist < 3){// shortcut
+        if (dist < 3) { // shortcut
           dest.x = x;
           dest.y = y;
           return dest;
@@ -452,62 +452,62 @@ void quit() {
 
   int id = -1;
   while (1) {
-    while(1){
+    while (1) {
       inputString = "";
       serialEvent();
-      id = inputString.charAt(3)-'A';
-      
+      id = inputString.charAt(3) - 'A';
+
       while (id < 0 || id > robNum) {
         inputString = "";
         serialEvent();
-        id = inputString.charAt(3)-'A';
+        id = inputString.charAt(3) - 'A';
       }// end loop
-    
-      if(inputString.charAt(5)=='p'){
-        remote_pos[id][0].x = inputString.charAt(9)-'0';
-        remote_pos[id][0].y = inputString.charAt(11)-'0';
+
+      if (inputString.charAt(5) == 'p') {
+        remote_pos[id][0].x = inputString.charAt(9) - '0';
+        remote_pos[id][0].y = inputString.charAt(11) - '0';
       }
-      else if(inputString.charAt(5)=='t'){
-        remote_pos[id][1].x = inputString.charAt(10)-'0';
-        remote_pos[id][1].y = inputString.charAt(12)-'0';
+      else if (inputString.charAt(5) == 't') {
+        remote_pos[id][1].x = inputString.charAt(10) - '0';
+        remote_pos[id][1].y = inputString.charAt(12) - '0';
         break;
       }
-   }// end inner loop
-  
-   coords remoteTarg;
-   remoteTarg.x = inputString.charAt(10)-'0';
-   remoteTarg.y = inputString.charAt(12)-'0';
-   coords remotePos;
-   remotePos.x= remote_pos[id][0].x;
-   remotePos.y= remote_pos[id][0].y;
-   
-   if(remoteTarg.x==currentPos.x && remoteTarg.y==currentPos.y){
+    }// end inner loop
+
+    coords remoteTarg;
+    remoteTarg.x = inputString.charAt(10) - '0';
+    remoteTarg.y = inputString.charAt(12) - '0';
+    coords remotePos;
+    remotePos.x = remote_pos[id][0].x;
+    remotePos.y = remote_pos[id][0].y;
+
+    if (remoteTarg.x == currentPos.x && remoteTarg.y == currentPos.y) {
       int targHeading = 10;
-      
+
       for (int i = 0; i < 4; i++) {
-          int x = currentPos.x + (i % 2) * (2 - i);
-          int y = currentPos.y + ((i + 1) % 2) * ((i + 1) - 2);
-      
-          // if off the board
-          if (x < 0 || x > 4 || y < 0 || y > 4){
-            continue;
-          }else if(x==remotePos.x && y==remotePos.y){
-            continue;
-          }else{
-            targHeading = i;
-            break;
-          }
-       }
+        int x = currentPos.x + (i % 2) * (2 - i);
+        int y = currentPos.y + ((i + 1) % 2) * ((i + 1) - 2);
 
-       move(targHeading);
-       rfid.transferToBuffer(tagData, tagDataBuffer);
+        // if off the board
+        if (x < 0 || x > 4 || y < 0 || y > 4) {
+          continue;
+        } else if (x == remotePos.x && y == remotePos.y) {
+          continue;
+        } else {
+          targHeading = i;
+          break;
+        }
+      }
 
-       // update heading
-       heading = targHeading;
-      
-       //ID new location
-       get_pos();
-          
+      move(targHeading);
+      rfid.transferToBuffer(tagData, tagDataBuffer);
+
+      // update heading
+      heading = targHeading;
+
+      //ID new location
+      get_pos();
+
     }// end if target equals position
 
     Serial.println(targBuff);

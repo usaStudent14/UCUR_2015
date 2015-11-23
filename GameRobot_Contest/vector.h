@@ -34,12 +34,13 @@ class vector {
 
 
   private:
-    int dummy = 0;
+
     int newtIndex;
     int size;
+    int dummy = 0;
     int items;
     const int initialSize = 2;
-    
+
     void deleteCoords(int target);
 
     coords * contents;
