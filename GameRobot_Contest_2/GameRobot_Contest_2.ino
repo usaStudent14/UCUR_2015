@@ -1,4 +1,4 @@
-// Authors: Ed Baker, Alex Henderson, Jake Maynard
+ // Authors: Ed Baker, Alex Henderson, Jake Maynard
 #include <QueueArray.h>
 
 #include <NXShield.h>
