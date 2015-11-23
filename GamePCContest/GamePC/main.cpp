@@ -87,20 +87,16 @@ int _tmain(int argc, _TCHAR* argv[])
 		// Robots handle duplicates
 		SP->WriteData(targ, 4);
 		Sleep(10);
-		SP->WriteData(targ, 4);
-		Sleep(10);
-		SP->WriteData(targ, 4);
-		Sleep(10);
-		SP->WriteData(targ, 4);
-		Sleep(10);
-		SP->WriteData(targ, 4);
 		//print to screen
 		cout << T.x << ", " << T.y << endl;
 	}
 
+	getchar();
 	SP->WriteData("d\n", 2);
 
 	cout << "System ready...\n";
+
+	
 
 	//BEGIN-----------------------------------
 	while(doneCount < ROBCOUNT && SP->IsConnected())
@@ -216,6 +212,18 @@ int _tmain(int argc, _TCHAR* argv[])
 	//END------------------------------------------
 
 	systemFin = true;
+
+	//Determine winner
+	int winIndex=0;
+	int max=0;
+	for(int r = 0; r < ROBCOUNT;r++){
+		char printID = r +'A';
+		cout << "Robot " << printID << " score:" << robs[r].getScore()<< endl;
+		if(robs[r].getScore() > max)
+			winIndex=r;
+	}
+	char printID = winIndex +'A';
+	cout << "Winner is Robot " << printID<<"!\n\n";
 
 	cout << "\nProcess Complete";
 

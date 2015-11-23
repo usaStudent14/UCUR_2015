@@ -19,6 +19,10 @@ coords Robot::getTarg(){
 	return targ;
 }
 
+int Robot::getScore(){
+	return score;
+}
+
 bool Robot::compareTarg(coords rTarg){
 	if(rTarg.x == targ.x && rTarg.y == targ.y)
 		return true;
