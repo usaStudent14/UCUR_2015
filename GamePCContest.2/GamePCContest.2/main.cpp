@@ -43,8 +43,10 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 	int doneCount = 0;// number of robots that have completed the game
-	int synchCount = 0;// number of robots waiting to synch target data
-	int callID = -1;
+	int posSynch = 0;
+	int targSynch = 0;// number of robots waiting to synch target data
+	int posID = -1;
+	int targID = -1;
 
 	//Format: "sys<recipientID>rp_<remoteID>:0,0(current pos):0,0(target pos)_<remoteID>..._\n"
 	char reply[100];
@@ -81,7 +83,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		string datastr = "";
 
 		if (!msgQ.empty()) {
-			cout << msgQ.front() << endl;
 
 			foobar.lock();
 			datastr = msgQ.front();
@@ -96,48 +97,75 @@ int _tmain(int argc, _TCHAR* argv[])
 
 				// If position report
 				if (datastr.find("pos") != string::npos) {
+
 					coords tempPos;
 					tempPos.x = datastr.at(9) - '0';
 					tempPos.y = datastr.at(11) - '0';
-
-					// if not a duplicate
-					if (tempPos.x != robs[id].getPos().x || tempPos.y != robs[id].getPos().y) {
-						//Store data
-						robs[id].setPos(tempPos.x, tempPos.y);
-						robs[id].incrementMoves();
-					}// end if duplicate
-
-					 //Reply with most recent position data
-					reply[3] = id + 'A';
-
-					int ctr = 7;
-					for (int i = 0; i < ROBCOUNT; i++) {
-						if (i != id) {
-							reply[ctr] = i + '0';
-							reply[ctr + 2] = robs[i].getPos().x + '0';
-							reply[ctr + 4] = robs[i].getPos().y + '0';
-							reply[ctr + 6] = robs[i].getTarg().x + '0';
-							reply[ctr + 8] = robs[i].getTarg().y + '0';
-
-							ctr += 10;
+					if (posSynch < ROBCOUNT) {
+						if (posID != id) {
+							posSynch++;
+							posID = id;
 						}
-					}// end loop
 
-					SP->WriteData(reply, rchar);
+						// if not a duplicate
+						if (tempPos.x != robs[id].getPos().x || tempPos.y != robs[id].getPos().y) {
+							cout << datastr << endl;
+							//Store data
+							robs[id].setPos(tempPos.x, tempPos.y);
+							robs[id].incrementMoves();
+						}// end if duplicate
+					}
+					if(posSynch == ROBCOUNT) {
+						//Reply with most recent position data
+						for (int i = 0; i < ROBCOUNT; i++) {
+							reply[3] = i + 'A';
+
+							int ctr = 7;
+							for (int j = 0; j < ROBCOUNT; j++) {
+								if (j != i) {
+									reply[ctr] = j + '0';
+									reply[ctr + 2] = robs[j].getPos().x + '0';
+									reply[ctr + 4] = robs[j].getPos().y + '0';
+									reply[ctr + 6] = robs[j].getTarg().x + '0';
+									reply[ctr + 8] = robs[j].getTarg().y + '0';
+
+									ctr += 10;
+								}
+							}// end loop
+
+							string ack = "xxxxxxxxxxxxx";
+							char pid = i + 'A';
+							do {
+								SP->WriteData(reply, rchar);
+								if (!msgQ.empty()) {
+									foobar.lock();
+									ack = msgQ.front();
+									msgQ.pop();
+									foobar.unlock();
+									cout << ack << endl;
+								}
+							} while (ack.at(3) != pid || ack.at(4) != 'p');
+						}
+						posSynch = 0;
+					}
 
 					// If target position report
 				}
 				else if (datastr.find("targ") != string::npos) {
-					if (synchCount < ROBCOUNT) {
-						if (callID != id) {
-							synchCount++;
-							callID = id;
+					if (targSynch < ROBCOUNT) {
+						if (targID != id) {
+							targSynch++;
+							targID = id;
 						}
-						// store  data
-						robs[id].setTarg(datastr.at(10) - '0', datastr.at(12) - '0');
+						// check duplicate
+						if (datastr.at(10)-'0' != robs[id].getTarg().x || datastr.at(12) - '0' != robs[id].getTarg().y) {
+							cout << datastr << endl;
+							//Store data
+							robs[id].setTarg(datastr.at(10) - '0', datastr.at(12) - '0');
+						}// end if duplicate
 					}
-					else {
-						char permiss[7] = "sysa&\n";
+					if (targSynch == ROBCOUNT) {
+						char permiss[8] = "sysat&\n";
 						// Compare robot's target positions
 						int goID = -1;
 						for (int a = 0; a < ROBCOUNT - 1; a++) {
@@ -155,13 +183,35 @@ int _tmain(int argc, _TCHAR* argv[])
 						}// end loop
 
 						permiss[3] = goID + 'A';
-						SP->WriteData(permiss, 6);
-						permiss[4] = '&';
+						string ack = "xxxxxxxxxxxxx";
+						char tid = goID + 'A';
+						do {
+							SP->WriteData(permiss, 6);
+							if (!msgQ.empty()) {
+								foobar.lock();
+								ack = msgQ.front();
+								msgQ.pop();
+								foobar.unlock();
+								cout << ack << endl;
+							}
+						} while (ack.at(3) != tid || ack.at(4) != 't');
+
+						permiss[5] = '*';
 						for (int i = 0; i < ROBCOUNT; i++) {
 							permiss[3] = i + 'A';
-							SP->WriteData(permiss, 6);
+							tid = goID + 'A';
+							do {
+								SP->WriteData(permiss, 6);
+								if (!msgQ.empty()) {
+									foobar.lock();
+									ack = msgQ.front();
+									msgQ.pop();
+									foobar.unlock();
+									cout << ack << endl;
+								}
+							} while (ack.at(3) != tid || ack.at(4) != 't');
 						}
-						synchCount = 0;
+						targSynch = 0;
 					}
 
 					// If completion report
@@ -204,13 +254,12 @@ void init(Robot * robs, char * reply, int rchar) {
 
 	//initial position read loop
 	int readcount = 0;
+	int prevID = -1;
 	while (readcount < ROBCOUNT) {
 		string datastr = "";
 
 		if (msgQ.empty())
 			continue;
-
-		cout << msgQ.front() << endl;
 
 		foobar.lock();
 		datastr = msgQ.front();
@@ -220,10 +269,12 @@ void init(Robot * robs, char * reply, int rchar) {
 		if (datastr.find("rob") != string::npos) {
 			char idChar = datastr.at(3);
 			int id = idChar - 'A';
-			if (id > ROBCOUNT || id < 0)
+
+			if (id > ROBCOUNT || id < 0 || id == prevID)
 				continue;
 
-			// If position report
+			cout << datastr << endl;
+			prevID = id;
 			if (datastr.find("pos") != string::npos) {
 				coords tempPos;
 				tempPos.x = datastr.at(9) - '0';
@@ -255,8 +306,18 @@ void init(Robot * robs, char * reply, int rchar) {
 				ctr += 10;
 			}
 		}// end loop
-
-		SP->WriteData(reply, rchar);
+		string ack = "xxxxxxxxxxxxx";
+		char id = r + 'A';
+		do {
+			SP->WriteData(reply, rchar);
+			if (!msgQ.empty()) {
+				foobar.lock();
+				ack = msgQ.front();
+				msgQ.pop();
+				foobar.unlock();
+				cout << ack << endl;
+			}
+		} while (ack.at(3) != id || ack.at(4)!='p');
 	}// end init write loop
 }// end init
 
